@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Educacional - Servicio de Educación Pública Del Pino</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .kpi-card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .kpi-card:hover { transform: translateY(-5px); }
+        .kpi-title { font-size: 0.9rem; color: #6c757d; text-transform: uppercase; font-weight: 600; }
+        .kpi-value { font-size: 2rem; font-weight: 700; color: #2c3e50; }
+        .trend-up { color: #28a745; font-size: 1.1rem; }
+        .trend-down { color: #dc3545; font-size: 1.1rem; }
+        .header-bg { background: linear-gradient(135deg, #0b3d91 0%, #1e5799 100%); color: white; padding: 20px 0; border-radius: 0 0 15px 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .filter-section { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .chart-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; height: 400px; }
+    </style>
+</head>
+<body>
+
+    <div class="header-bg text-center">
+        <h2><i class="bi bi-bank"></i> Servicio de Educación Pública Del Pino</h2>
+        <p class="mb-0">Panel de Control de Asistencia y Matrícula</p>
+    </div>
+
+    <div class="container-fluid px-4">
+        
+        <div class="filter-section">
+            <h5 class="mb-3"><i class="bi bi-funnel"></i> Filtros de Búsqueda</h5>
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Año</label>
+                    <select id="filtro-agno" class="form-select"></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Mes</label>
+                    <select id="filtro-mes" class="form-select"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Establecimiento</label>
+                    <select id="filtro-establecimiento" class="form-select">
+                        <option value="Todos">Todos los Establecimientos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Enseñanza</label>
+                    <select id="filtro-ensenanza" class="form-select">
+                        <option value="Todas">Todas</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Nivel</label>
+                    <select id="filtro-nivel" class="form-select">
+                        <option value="Todos">Todos</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card kpi-card p-3">
+                    <div class="kpi-title">Matrícula Total (Mes Seleccionado)</div>
+                    <div class="kpi-value" id="kpi-matricula">0</div>
+                    <div><span id="kpi-matricula-trend"></span> vs año anterior</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card kpi-card p-3">
+                    <div class="kpi-title">Promedio Asistencia (Ponderada)</div>
+                    <div class="kpi-value" id="kpi-asistencia">0%</div>
+                    <div><span id="kpi-asistencia-trend"></span> vs año anterior</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card kpi-card p-3">
+                    <div class="kpi-title">Cursos Analizados</div>
+                    <div class="kpi-value" id="kpi-cursos">0</div>
+                    <div class="text-muted">Bajo los filtros actuales</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <canvas id="graficoTendencia"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // Variables globales
+        let datosCompletos = [];
+        let graficoActual = null;
+
+        // Configuración inicial al cargar la página
+        document.addEventListener("DOMContentLoaded", function() {
+            cargarDatos();
+            
+            // Asignar eventos a los filtros para que actualicen el dashboard al cambiar
+            const filtros = ['filtro-agno', 'filtro-mes', 'filtro-establecimiento', 'filtro-ensenanza', 'filtro-nivel'];
+            filtros.forEach(id => {
+                document.getElementById(id).addEventListener('change', actualizarDashboard);
+            });
+        });
+
+        // 1. Cargar y parsear el archivo CSV
+        function cargarDatos() {
+            Papa.parse("datos_por_curso.csv", {
+                download: true,
+                header: true,
+                delimiter: ";", // Sabemos que Excel lo exportó con ;
+                skipEmptyLines: true,
+                complete: function(results) {
+                    procesarDatosCrudos(results.data);
+                },
+                error: function(err) {
+                    alert("Error al cargar los datos. ¿Estás ejecutando un servidor local? Error: " + err);
+                }
+            });
+        }
+
+        // 2. Limpiar datos y convertir textos a números
+        function procesarDatosCrudos(data) {
+            datosCompletos = data.map(fila => {
+                // Limpiar el porcentaje de asistencia (ej: "85%" -> 0.85)
+                let asisStr = fila.Porc_de_Asistencia || "0";
+                asisStr = asisStr.replace('%', '').replace(',', '.');
+                let asistencia = parseFloat(asisStr) / 100;
+                if(asistencia > 1) asistencia = asistencia / 100; // Por si viene como 85 en vez de 0.85
+
+                return {
+                    ...fila,
+                    Asistencia_Num: isNaN(asistencia) ? 0 : asistencia,
+                    Matricula_Num: parseInt(fila['Matrícula_cierre_mes']) || 0
+                };
+            });
+
+            poblarFiltrosIniciales();
+            actualizarDashboard();
+        }
+
+        // 3. Poblar los menús desplegables con valores únicos
+        function poblarFiltrosIniciales() {
+            const agnos = [...new Set(datosCompletos.map(d => d.agno))].sort();
+            const meses = [...new Set(datosCompletos.map(d => d.mes))].sort();
+            const establecimientos = [...new Set(datosCompletos.map(d => d.Establecimiento))].sort();
+
+            llenarSelect('filtro-agno', agnos, agnos[agnos.length - 1]); // Selecciona el último año por defecto
+            llenarSelect('filtro-mes', meses, meses[meses.length - 1]); // Selecciona el último mes por defecto
+            
+            let selEst = document.getElementById('filtro-establecimiento');
+            establecimientos.forEach(est => selEst.add(new Option(est, est)));
+        }
+
+        function llenarSelect(id, opciones, valorPorDefecto = null) {
+            const select = document.getElementById(id);
+            select.innerHTML = '';
+            opciones.forEach(op => select.add(new Option(op, op)));
+            if (valorPorDefecto) select.value = valorPorDefecto;
+        }
+
+        // 4. Lógica Principal: Filtrar y Calcular cada vez que el usuario toca algo
+        function actualizarDashboard() {
+            const agno = document.getElementById('filtro-agno').value;
+            const mes = document.getElementById('filtro-mes').value;
+            const establecimiento = document.getElementById('filtro-establecimiento').value;
+
+            // Filtrar datos del periodo actual
+            let datosFiltrados = datosCompletos.filter(d => d.agno === agno && d.mes === mes);
+            if (establecimiento !== "Todos") {
+                datosFiltrados = datosFiltrados.filter(d => d.Establecimiento === establecimiento);
+            }
+
+            // Filtrar datos del MISMO MES, pero del AÑO ANTERIOR para la comparativa
+            const agnoAnterior = (parseInt(agno) - 1).toString();
+            let datosAnteriores = datosCompletos.filter(d => d.agno === agnoAnterior && d.mes === mes);
+            if (establecimiento !== "Todos") {
+                datosAnteriores = datosAnteriores.filter(d => d.Establecimiento === establecimiento);
+            }
+
+            calcularYMostrarKPIs(datosFiltrados, datosAnteriores);
+            actualizarGrafico(establecimiento, agno, mes);
+        }
+
+        // 5. Cálculos Matemáticos (Matrícula y Promedio Ponderado)
+        function calcularYMostrarKPIs(datosActuales, datosAnteriores) {
+            // Cálculos Actuales
+            let matriculaActual = 0;
+            let sumaPonderadaAsistenciaActual = 0;
+
+            datosActuales.forEach(d => {
+                matriculaActual += d.Matricula_Num;
+                sumaPonderadaAsistenciaActual += (d.Asistencia_Num * d.Matricula_Num);
+            });
+
+            let asistenciaPromedioActual = matriculaActual > 0 ? (sumaPonderadaAsistenciaActual / matriculaActual) : 0;
+
+            // Cálculos Año Anterior
+            let matriculaAnterior = 0;
+            let sumaPonderadaAsistenciaAnterior = 0;
+
+            datosAnteriores.forEach(d => {
+                matriculaAnterior += d.Matricula_Num;
+                sumaPonderadaAsistenciaAnterior += (d.Asistencia_Num * d.Matricula_Num);
+            });
+
+            let asistenciaPromedioAnterior = matriculaAnterior > 0 ? (sumaPonderadaAsistenciaAnterior / matriculaAnterior) : 0;
+
+            // Renderizar Valores
+            document.getElementById('kpi-matricula').innerText = matriculaActual.toLocaleString('es-CL');
+            document.getElementById('kpi-asistencia').innerText = (asistenciaPromedioActual * 100).toFixed(1) + "%";
+            document.getElementById('kpi-cursos').innerText = datosActuales.length;
+
+            // Renderizar Tendencias (Variación Interanual)
+            mostrarTendencia('kpi-matricula-trend', matriculaActual, matriculaAnterior, false);
+            mostrarTendencia('kpi-asistencia-trend', asistenciaPromedioActual, asistenciaPromedioAnterior, true);
+        }
+
+        function mostrarTendencia(elementoId, actual, anterior, esPorcentaje) {
+            const el = document.getElementById(elementoId);
+            if (anterior === 0) {
+                el.innerHTML = "<span class='text-muted'>S/I</span>";
+                return;
+            }
+
+            let diferencia = actual - anterior;
+            let difFormateada = esPorcentaje ? (diferencia * 100).toFixed(1) + "%" : diferencia.toLocaleString('es-CL');
+            
+            if (diferencia > 0) {
+                el.innerHTML = `<i class="bi bi-arrow-up-right trend-up"></i> <span class="trend-up">+${difFormateada}</span>`;
+            } else if (diferencia < 0) {
+                el.innerHTML = `<i class="bi bi-arrow-down-right trend-down"></i> <span class="trend-down">${difFormateada}</span>`;
+            } else {
+                el.innerHTML = `<span class="text-muted">= 0</span>`;
+            }
+        }
+
+        // 6. Gráfico Interanual
+        function actualizarGrafico(establecimiento, agno, mes) {
+            // Agrupar asistencia promedio por mes para el año seleccionado
+            let mesesUnicos = [...new Set(datosCompletos.map(d => d.mes))].sort();
+            
+            let datosGraficoActual = [];
+            mesesUnicos.forEach(m => {
+                let dFiltrados = datosCompletos.filter(d => d.agno === agno && d.mes === m && (establecimiento === "Todos" || d.Establecimiento === establecimiento));
+                let mat = 0; let asisPond = 0;
+                dFiltrados.forEach(d => { mat += d.Matricula_Num; asisPond += (d.Asistencia_Num * d.Matricula_Num); });
+                datosGraficoActual.push(mat > 0 ? (asisPond / mat) * 100 : null);
+            });
+
+            if (graficoActual) {
+                graficoActual.destroy();
+            }
+
+            const ctx = document.getElementById('graficoTendencia').getContext('2d');
+            graficoActual = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: mesesUnicos,
+                    datasets: [{
+                        label: `Asistencia % (${agno})`,
+                        data: datosGraficoActual,
+                        borderColor: '#0b3d91',
+                        backgroundColor: 'rgba(11, 61, 145, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Evolución de Asistencia en el Año' }
+                    },
+                    scales: {
+                        y: { beginAtZero: false, min: 70, max: 100 }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
