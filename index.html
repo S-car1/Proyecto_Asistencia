@@ -276,7 +276,20 @@ let IS_ADMIN = false;
 let SESSION_RBD = null;
 let SHOW_SLEP = false;
 
-const V = { AGNO: 'agno', MES: 'mes', RBD: 'rbd', EST: 'establecimiento', ENS: 'enseñanza', NIV: 'nivel', LET: 'letra', ASIS: '%Asistencia', MAT: 'Matrícula' };
+// --- FUNCIÓN INTELIGENTE PARA LEER COLUMNAS SIN IMPORTAR TILDES O MAYÚSCULAS ---
+function encontrarValorColumna(fila, opcionesClave) {
+    const nombresColumnas = Object.keys(fila);
+    for (let claveBusqueda of opcionesClave) {
+        let claveLimpiaBusqueda = claveBusqueda.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        let encontrada = nombresColumnas.find(k => 
+            k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === claveLimpiaBusqueda
+        );
+        if (encontrada && fila[encontrada] !== undefined && fila[encontrada] !== null) {
+            return fila[encontrada];
+        }
+    }
+    return "";
+}
 
 // --- MOTOR DE ARRANQUE Y LOGIN ---
 function handleLogin() {
@@ -310,7 +323,7 @@ function handleLogin() {
         procesarDatos(results.data, user);
       } else {
         loader.style.display = 'none';
-        errorEl.innerText = "La base de datos está vacía.";
+        errorEl.innerText = "La base de datos está vacía o el enlace CSV no responde.";
         errorEl.style.display = 'block';
       }
     },
@@ -324,30 +337,41 @@ function handleLogin() {
 
 function procesarDatos(rawData, user) {
   DB_RAW = rawData.map(row => {
-    // CORRECCIÓN MATEMÁTICA: Lectura limpia del decimal 0,85
-    let asisStr = (row[V.ASIS] || row['% Asistencia'] || row['Porc_de_Asistencia'] || "0").toString().replace('%','').replace(',','.');
-    let asistencia = parseFloat(asisStr);
+    // Extracción Blindada
+    let asisRaw = encontrarValorColumna(row, ['%asistencia', 'asistencia', 'porc_de_asistencia']);
+    let matRaw = encontrarValorColumna(row, ['matricula', 'matricula_cierre_mes']);
+    let rbdEstRaw = encontrarValorColumna(row, ['rbd_establecimiento', 'establecimiento']);
+    let rbdRaw = encontrarValorColumna(row, ['rbd']);
     
-    // Solo dividimos por 100 si el valor supera el 1 (Ej: si viene como 85 en vez de 0.85)
-    if(asistencia > 1 && asistencia <= 100) asistencia = asistencia / 100;
+    // Si la columna viene combinada (ej: "1234 - Escuela")
+    if (!rbdRaw && rbdEstRaw) {
+        let match = rbdEstRaw.toString().match(/^(\d+)/);
+        if (match) rbdRaw = match[1];
+    }
+    if (!rbdEstRaw && rbdRaw) rbdEstRaw = rbdRaw;
 
-    let matStr = row[V.MAT] || row['Matrícula_cierre_mes'] || row['Matricula'] || "0";
-    let rbdFinal = row[V.RBD] || row['RBD'];
-    let estFinal = row[V.EST] || row['Establecimiento'];
-    
+    // Procesamiento Matemático Seguro
+    let asisStr = (asisRaw || "0").toString().replace('%','').replace(',','.');
+    let asistencia = parseFloat(asisStr);
+    if (asistencia > 1 && asistencia <= 100) asistencia = asistencia / 100;
+
+    // Limpieza de puntos de miles en la matrícula por si acaso
+    let matricula = parseInt((matRaw || "0").toString().replace(/\./g,''), 10) || 0; 
+
     return {
-      agno: (row[V.AGNO] || row['Año'] || "").toString().trim(),
-      mes: (row[V.MES] || row['Mes'] || "").toString().trim(),
-      rbd_est: `${rbdFinal} - ${estFinal}`,
-      rbd_puro: (rbdFinal || "").toString().trim(),
-      ensenanza: (row[V.ENS] || row['Enseñanza'] || "").toString().trim(),
-      nivel: (row[V.NIV] || row['Nivel'] || "").toString().trim(),
-      letra: (row[V.LET] || row['Letra'] || "").toString().trim(),
+      agno: (encontrarValorColumna(row, ['agno', 'año', 'year']) || "").toString().trim(),
+      mes: (encontrarValorColumna(row, ['mes', 'month']) || "").toString().trim(),
+      rbd_est: rbdEstRaw.toString().trim(),
+      rbd_puro: rbdRaw.toString().trim(),
+      ensenanza: (encontrarValorColumna(row, ['enseñanza', 'ensenanza']) || "").toString().trim(),
+      nivel: (encontrarValorColumna(row, ['nivel']) || "").toString().trim(),
+      letra: (encontrarValorColumna(row, ['letra']) || "").toString().trim(),
       asistencia: isNaN(asistencia) ? 0 : asistencia,
-      matricula: parseInt(matStr, 10) || 0
+      matricula: matricula
     };
   }).filter(d => d.agno !== "" && d.matricula > 0);
 
+  // Validación de acceso por RBD
   if (user === 'admin') {
     IS_ADMIN = true;
   } else {
@@ -407,9 +431,11 @@ function configurarFiltros() {
       return a.localeCompare(b, 'es', {numeric: true});
     });
 
+    // Fix: maxItems: null asegura que no se congele la selección múltiple
     ts[key] = new TomSelect(`#${mapeo[key]}`, {
       plugins: ['checkbox_options'],
-      maxOptions: 300,
+      maxOptions: null,
+      maxItems: null, 
       closeAfterSelect: false,
       valueField: 'id',
       labelField: 'title',
@@ -420,140 +446,152 @@ function configurarFiltros() {
   });
 
   const agnos = [...new Set(DB_RAW.map(d => d.agno))];
-  ts['agno'].setValue(agnos);
+  ts['agno'].setValue(agnos, true); // true = silencioso, no dispara evento extra
 
   document.getElementById('btn-clear').onclick = () => { 
     Object.keys(ts).forEach(k => {
       if (!IS_ADMIN && k === 'rbd_est') return; 
-      ts[k].clear(true); 
+      ts[k].setValue([], true); // Fix: Usar setValue vacío en vez de clear
     });
-    ts['agno'].setValue(agnos); 
+    ts['agno'].setValue(agnos, true); 
     actualizarDashboard();
   };
 }
 
-// --- LOGICA PRINCIPAL PROTEGIDA CONTRA FALLOS ---
+// --- LOGICA PRINCIPAL BLINDADA ---
 function actualizarDashboard() {
-  // Extracción segura de arreglos desde TomSelect
-  const getArr = (id) => { let v = ts[id].getValue(); return Array.isArray(v) ? v : (v ? [v] : []); };
-  
-  const f = {
-    agno: getArr('agno'),
-    mes: getArr('mes'),
-    ensenanza: getArr('ensenanza'),
-    nivel: getArr('nivel'),
-    letra: getArr('letra'),
-    rbd_est: getArr('rbd_est')
-  };
+  try {
+      const getArr = (id) => { let v = ts[id].getValue(); return Array.isArray(v) ? v : (v ? [v] : []); };
+      
+      const f = {
+        agno: getArr('agno'),
+        mes: getArr('mes'),
+        ensenanza: getArr('ensenanza'),
+        nivel: getArr('nivel'),
+        letra: getArr('letra'),
+        rbd_est: getArr('rbd_est')
+      };
 
-  let datosFiltrados = DB_RAW.filter(d => {
-    if (f.agno.length && !f.agno.includes(d.agno)) return false;
-    if (f.mes.length && !f.mes.includes(d.mes)) return false;
-    if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
-    if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
-    if (f.letra.length && !f.letra.includes(d.letra)) return false;
-    if (f.rbd_est.length && !f.rbd_est.includes(d.rbd_est)) return false;
-    return true;
-  });
-
-  let datosSlep = DB_RAW.filter(d => {
-    if (f.agno.length && !f.agno.includes(d.agno)) return false;
-    if (f.mes.length && !f.mes.includes(d.mes)) return false;
-    if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
-    if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
-    if (f.letra.length && !f.letra.includes(d.letra)) return false;
-    return true;
-  });
-
-  let asisPonderadaSum = 0, matTotal = 0, establecimientosUnicos = new Set();
-  
-  // BLINDAJE: Prevención del error -Infinity cuando los filtros están vacíos
-  let agnosDisponibles = [...new Set(datosFiltrados.map(d=>d.agno))];
-  let ultimoAgno = agnosDisponibles.length > 0 ? Math.max(...agnosDisponibles.map(Number)).toString() : null;
-  let ultimoMes = null;
-  
-  if (ultimoAgno) {
-      let mesesDelUltimoAgno = [...new Set(datosFiltrados.filter(d => d.agno === ultimoAgno).map(d => d.mes))];
-      if (mesesDelUltimoAgno.length > 0) {
-          mesesDelUltimoAgno.sort((a, b) => ORDEN_MESES.indexOf(b) - ORDEN_MESES.indexOf(a));
-          ultimoMes = mesesDelUltimoAgno[0];
-          document.getElementById('kpi-matricula-desc').innerText = `Dato a ${ultimoMes} ${ultimoAgno}`;
-      } else {
-          document.getElementById('kpi-matricula-desc').innerText = "Sin datos";
-      }
-  } else {
-      document.getElementById('kpi-matricula-desc').innerText = "Filtro vacío";
-  }
-
-  datosFiltrados.forEach(d => {
-    asisPonderadaSum += (d.asistencia * d.matricula);
-    matTotal += d.matricula;
-    establecimientosUnicos.add(d.rbd_puro);
-  });
-
-  let matReal = 0;
-  let aulasUnicas = new Set();
-  
-  if (ultimoAgno && ultimoMes) {
-      datosFiltrados.filter(d => d.agno === ultimoAgno && d.mes === ultimoMes).forEach(d => {
-          matReal += d.matricula;
-          aulasUnicas.add(`${d.rbd_puro}-${d.ensenanza}-${d.nivel}-${d.letra}`);
+      let datosFiltrados = DB_RAW.filter(d => {
+        if (f.agno.length && !f.agno.includes(d.agno)) return false;
+        if (f.mes.length && !f.mes.includes(d.mes)) return false;
+        if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
+        if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
+        if (f.letra.length && !f.letra.includes(d.letra)) return false;
+        if (f.rbd_est.length && !f.rbd_est.includes(d.rbd_est)) return false;
+        return true;
       });
-  }
 
-  let asistenciaPromedio = matTotal > 0 ? (asisPonderadaSum / matTotal) : 0;
+      let datosSlep = DB_RAW.filter(d => {
+        if (f.agno.length && !f.agno.includes(d.agno)) return false;
+        if (f.mes.length && !f.mes.includes(d.mes)) return false;
+        if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
+        if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
+        if (f.letra.length && !f.letra.includes(d.letra)) return false;
+        return true;
+      });
 
-  document.getElementById('kpi-asistencia').innerText = matTotal > 0 ? (asistenciaPromedio * 100).toFixed(1) + '%' : '—';
-  document.getElementById('kpi-matricula').innerText = matReal.toLocaleString('es-CL');
-  document.getElementById('kpi-establecimientos').innerText = establecimientosUnicos.size;
-  document.getElementById('kpi-cursos').innerText = aulasUnicas.size;
-
-  let mesesUnicosArr = [...new Set(datosFiltrados.map(d=>d.mes))].sort((a, b) => ORDEN_MESES.indexOf(a) - ORDEN_MESES.indexOf(b));
-  let agnosUnicosArr = [...new Set(datosFiltrados.map(d=>d.agno))].sort();
-
-  let evoAsisData = { labels: mesesUnicosArr, datasets: [] };
-  let evoMatData = { labels: mesesUnicosArr, datasets: [] };
-  let colors = ['#0284c7', '#ea580c', '#1a7f37', '#8250df'];
-
-  agnosUnicosArr.forEach((agno, idx) => {
-    let dataAsis = [], dataMat = [], dataAsisSlep = [];
-    
-    mesesUnicosArr.forEach(mes => {
-      let df = datosFiltrados.filter(d => d.agno === agno && d.mes === mes);
-      let mSum = 0, aSum = 0;
-      df.forEach(d => { mSum += d.matricula; aSum += (d.asistencia * d.matricula); });
-      dataAsis.push(mSum > 0 ? (aSum/mSum) : null);
-      dataMat.push(mSum > 0 ? mSum : null);
-
-      if (SHOW_SLEP && (!IS_ADMIN || f.rbd_est.length > 0)) {
-          let ds = datosSlep.filter(d => d.agno === agno && d.mes === mes);
-          let mSumSlep = 0, aSumSlep = 0;
-          ds.forEach(d => { mSumSlep += d.matricula; aSumSlep += (d.asistencia * d.matricula); });
-          dataAsisSlep.push(mSumSlep > 0 ? (aSumSlep/mSumSlep) : null);
+      let asisPonderadaSum = 0, matTotalForAsis = 0, establecimientosUnicos = new Set();
+      
+      let agnosDisponibles = [...new Set(datosFiltrados.map(d=>d.agno))];
+      let ultimoAgno = agnosDisponibles.length > 0 ? Math.max(...agnosDisponibles.map(Number)).toString() : null;
+      let ultimoMes = null;
+      
+      if (ultimoAgno) {
+          let mesesDelUltimoAgno = [...new Set(datosFiltrados.filter(d => d.agno === ultimoAgno).map(d => d.mes))];
+          if (mesesDelUltimoAgno.length > 0) {
+              mesesDelUltimoAgno.sort((a, b) => ORDEN_MESES.indexOf(b) - ORDEN_MESES.indexOf(a));
+              ultimoMes = mesesDelUltimoAgno[0];
+              document.getElementById('kpi-matricula-desc').innerText = `Dato a ${ultimoMes} ${ultimoAgno}`;
+          } else {
+              document.getElementById('kpi-matricula-desc').innerText = "Sin datos";
+          }
+      } else {
+          document.getElementById('kpi-matricula-desc').innerText = "Filtros sin resultados";
       }
-    });
 
-    evoAsisData.datasets.push(crearDatasetLineal(`Asistencia ${agno}`, dataAsis, colors[idx % colors.length], false));
-    evoMatData.datasets.push(crearDatasetBarras(`Matrícula ${agno}`, dataMat, colors[idx % colors.length]));
-    
-    if (SHOW_SLEP && (!IS_ADMIN || f.rbd_est.length > 0)) {
-        evoAsisData.datasets.push(crearDatasetLineal(`SLEP ${agno}`, dataAsisSlep, colors[idx % colors.length], true));
-    }
-  });
+      datosFiltrados.forEach(d => {
+        // Fix Crítico: Ignorar asistencia 0 para no desplomar el promedio
+        if (d.asistencia > 0) {
+            asisPonderadaSum += (d.asistencia * d.matricula);
+            matTotalForAsis += d.matricula;
+        }
+        establecimientosUnicos.add(d.rbd_puro);
+      });
 
-  actualizarGrafico(charts['asis-evo'], evoAsisData);
-  actualizarGrafico(charts['mat-evo'], evoMatData);
+      let matReal = 0;
+      let aulasUnicas = new Set();
+      
+      if (ultimoAgno && ultimoMes) {
+          datosFiltrados.filter(d => d.agno === ultimoAgno && d.mes === ultimoMes).forEach(d => {
+              matReal += d.matricula;
+              aulasUnicas.add(`${d.rbd_puro}-${d.ensenanza}-${d.nivel}-${d.letra}`);
+          });
+      }
 
-  let datosCorte = [];
-  if (ultimoAgno && ultimoMes) {
-      datosCorte = datosFiltrados.filter(d => d.agno === ultimoAgno && d.mes === ultimoMes);
+      let asistenciaPromedio = matTotalForAsis > 0 ? (asisPonderadaSum / matTotalForAsis) : 0;
+
+      document.getElementById('kpi-asistencia').innerText = matTotalForAsis > 0 ? (asistenciaPromedio * 100).toFixed(1) + '%' : '—';
+      document.getElementById('kpi-matricula').innerText = matReal.toLocaleString('es-CL');
+      document.getElementById('kpi-establecimientos').innerText = establecimientosUnicos.size;
+      document.getElementById('kpi-cursos').innerText = aulasUnicas.size;
+
+      let mesesUnicosArr = [...new Set(datosFiltrados.map(d=>d.mes))].sort((a, b) => ORDEN_MESES.indexOf(a) - ORDEN_MESES.indexOf(b));
+      let agnosUnicosArr = [...new Set(datosFiltrados.map(d=>d.agno))].sort();
+
+      let evoAsisData = { labels: mesesUnicosArr, datasets: [] };
+      let evoMatData = { labels: mesesUnicosArr, datasets: [] };
+      let colors = ['#0284c7', '#ea580c', '#1a7f37', '#8250df'];
+
+      agnosUnicosArr.forEach((agno, idx) => {
+        let dataAsis = [], dataMat = [], dataAsisSlep = [];
+        
+        mesesUnicosArr.forEach(mes => {
+          let df = datosFiltrados.filter(d => d.agno === agno && d.mes === mes);
+          let mSum = 0, aSum = 0;
+          df.forEach(d => { 
+              if(d.asistencia > 0) { aSum += (d.asistencia * d.matricula); mSum += d.matricula; }
+          });
+          dataAsis.push(mSum > 0 ? (aSum/mSum) : null);
+          
+          let dfMat = df.reduce((acc, current) => acc + current.matricula, 0);
+          dataMat.push(dfMat > 0 ? dfMat : null);
+
+          if (SHOW_SLEP && (!IS_ADMIN || f.rbd_est.length > 0)) {
+              let ds = datosSlep.filter(d => d.agno === agno && d.mes === mes);
+              let mSumSlep = 0, aSumSlep = 0;
+              ds.forEach(d => { 
+                  if(d.asistencia > 0) { aSumSlep += (d.asistencia * d.matricula); mSumSlep += d.matricula; }
+              });
+              dataAsisSlep.push(mSumSlep > 0 ? (aSumSlep/mSumSlep) : null);
+          }
+        });
+
+        evoAsisData.datasets.push(crearDatasetLineal(`Asistencia ${agno}`, dataAsis, colors[idx % colors.length], false));
+        evoMatData.datasets.push(crearDatasetBarras(`Matrícula ${agno}`, dataMat, colors[idx % colors.length]));
+        
+        if (SHOW_SLEP && (!IS_ADMIN || f.rbd_est.length > 0)) {
+            evoAsisData.datasets.push(crearDatasetLineal(`SLEP ${agno}`, dataAsisSlep, colors[idx % colors.length], true));
+        }
+      });
+
+      actualizarGrafico(charts['asis-evo'], evoAsisData);
+      actualizarGrafico(charts['mat-evo'], evoMatData);
+
+      let datosCorte = [];
+      if (ultimoAgno && ultimoMes) {
+          datosCorte = datosFiltrados.filter(d => d.agno === ultimoAgno && d.mes === ultimoMes);
+      }
+      
+      let ensData = agruparPorCategoria(datosCorte, 'ensenanza', ORDEN_ENSENANZA);
+      actualizarGraficoHBar(charts['asis-ensenanza'], ensData.labels, ensData.asistencias, '#8250df');
+      
+      let nivData = agruparPorCategoria(datosCorte, 'nivel', ORDEN_NIVEL);
+      actualizarGraficoHBar(charts['asis-nivel'], nivData.labels, nivData.asistencias, '#ea580c');
+
+  } catch (error) {
+      console.error("Error en el renderizado del dashboard:", error);
   }
-  
-  let ensData = agruparPorCategoria(datosCorte, 'ensenanza', ORDEN_ENSENANZA);
-  actualizarGraficoHBar(charts['asis-ensenanza'], ensData.labels, ensData.asistencias, '#8250df');
-  
-  let nivData = agruparPorCategoria(datosCorte, 'nivel', ORDEN_NIVEL);
-  actualizarGraficoHBar(charts['asis-nivel'], nivData.labels, nivData.asistencias, '#ea580c');
 }
 
 function agruparPorCategoria(data, variable, arrayOrdenamiento) {
@@ -561,8 +599,11 @@ function agruparPorCategoria(data, variable, arrayOrdenamiento) {
     data.forEach(d => {
         let k = d[variable];
         if(!grupos[k]) grupos[k] = { asisSum: 0, matSum: 0 };
-        grupos[k].matSum += d.matricula;
-        grupos[k].asisSum += (d.asistencia * d.matricula);
+        // Solo calcular promedio con asistencia válida
+        if(d.asistencia > 0) {
+            grupos[k].matSum += d.matricula;
+            grupos[k].asisSum += (d.asistencia * d.matricula);
+        }
     });
 
     let labels = Object.keys(grupos).sort((a,b) => {
@@ -576,11 +617,8 @@ function agruparPorCategoria(data, variable, arrayOrdenamiento) {
 }
 
 function crearDatasetLineal(label, data, color, isSlep) {
-    return {
-        label: label, data: data, borderColor: isSlep ? color + '88' : color, backgroundColor: isSlep ? 'transparent' : color + '11', borderWidth: isSlep ? 2 : 3, borderDash: isSlep ? [5, 5] : [], fill: !isSlep, pointStyle: isSlep ? 'triangle' : 'circle', pointRadius: 4, tension: 0.2
-    };
+    return { label: label, data: data, borderColor: isSlep ? color + '88' : color, backgroundColor: isSlep ? 'transparent' : color + '11', borderWidth: isSlep ? 2 : 3, borderDash: isSlep ? [5, 5] : [], fill: !isSlep, pointStyle: isSlep ? 'triangle' : 'circle', pointRadius: 4, tension: 0.2 };
 }
-
 function crearDatasetBarras(label, data, color) { return { label: label, data: data, backgroundColor: color + 'DD', borderRadius: 4 }; }
 function actualizarGrafico(chart, dataObj) { chart.data = dataObj; chart.update(); }
 function actualizarGraficoHBar(chart, labels, data, color) { chart.data = { labels: labels, datasets: [{ label: 'Asistencia Promedio', data: data, backgroundColor: color + 'CC', borderRadius: 4 }] }; chart.update(); }
@@ -605,34 +643,7 @@ function showTab(tabId, e) {
   document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(tabId).style.display = 'block';
-  if(e) e.currentTarget.classList.add('active');
-}
-
-function toggleSlep() { SHOW_SLEP = document.getElementById('slep-toggle').checked; document.getElementById('slep-label-text').style.color = SHOW_SLEP ? 'var(--leng)' : 'var(--text-muted)'; actualizarDashboard(); }
-
-function initCharts() {
-  const getOptLine = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0.7, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.raw * 100).toFixed(1) + '%' } } } });
-  const getOptBar = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
-  const getOptHBar = () => ({ responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0.5, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { legend:{display:false}, tooltip: { callbacks: { label: c => (c.raw * 100).toFixed(1) + '%' } } } });
-
-  charts['asis-evo'] = new Chart(document.getElementById('chart-asis-evo'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLine() });
-  charts['mat-evo'] = new Chart(document.getElementById('chart-mat-evo'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptBar() });
-  charts['asis-ensenanza'] = new Chart(document.getElementById('chart-asis-ensenanza'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
-  charts['asis-nivel'] = new Chart(document.getElementById('chart-asis-nivel'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
-  toggleTheme(); 
-}
-
-function descargarGrafico(btn) {
-  const card = btn.closest('.chart-card');
-  btn.style.opacity = '0'; 
-  const titleEl = card.querySelector('.chart-title');
-  let fileName = titleEl ? titleEl.innerText.replace(/\n/g, '_').replace(/ /g, '_') + '.png' : 'Grafico.png';
-  const isDark = document.body.classList.contains('dark-theme');
-  html2canvas(card, { backgroundColor: isDark ? '#161b22' : '#ffffff', scale: 2 }).then(canvas => {
-    const link = document.createElement('a'); link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
-    btn.style.opacity = ''; 
-  });
-}
+  if(e) e.currentTarget.classList
 </script>
 </body>
 </html>
