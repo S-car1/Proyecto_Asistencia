@@ -57,7 +57,7 @@
     /* NAVBAR & FILTROS */
     .sticky-top-section { position: sticky; top: 0; z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
     body.dark-theme .sticky-top-section { box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-    .header { padding: 1rem 2rem 0.5rem 2rem; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header { padding: 1rem 2rem 0.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }
     .header-info { display: flex; align-items: center; gap: 1rem; }
     .filter-bar { padding: 0.5rem 2rem 0.8rem 2rem; display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; }
     .filter-group { position: relative; transition: opacity 0.3s; }
@@ -114,12 +114,6 @@
     .chart-card:hover .btn-download { opacity: 1; }
 
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
-
-    .active-filters-tray { display: block; padding-top: 0.4rem; }
-    .filter-group-tag { display: inline-flex; align-items: center; margin: 0 0.5rem 0.5rem 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-    .filter-group-label { padding: 4px 8px; font-size: 0.65rem; font-weight: 800; color: var(--leng); background: rgba(56,189,248,0.05); border-right: 1px solid var(--border); cursor: pointer; }
-    .filter-value-tag { padding: 4px 10px; font-size: 0.75rem; color: var(--text); cursor: pointer; display: flex; align-items: center; border-right: 1px solid var(--border); }
-    .filter-value-tag:hover { background: var(--surface-2); text-decoration: line-through; color: var(--text-muted); }
   </style>
 </head>
 <body>
