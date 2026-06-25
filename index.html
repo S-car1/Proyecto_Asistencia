@@ -60,7 +60,7 @@
     .header { padding: 1rem 2rem 0.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }
     .header-info { display: flex; align-items: center; gap: 1rem; }
     .filter-bar { padding: 0.5rem 2rem 0.8rem 2rem; display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; }
-    .filter-group { position: relative; transition: opacity 0.3s; }
+    .filter-bar .filter-group { position: relative; transition: opacity 0.3s; }
     .filter-group::before { content: attr(data-label); position: absolute; left: 0; top: 8px; font-size: 0.85rem; font-weight: 800; color: var(--text-muted); pointer-events: none; transition: opacity 0.2s, color 0.2s; z-index: 10; letter-spacing: 0.05em; }
     .filter-group:hover::before { color: var(--text); }
     .filter-group:focus-within::before { opacity: 0; }
@@ -112,8 +112,6 @@
     .btn-download { position: absolute; top: 1.25rem; right: 1.4rem; background: transparent; border: none; color: var(--text-muted); width: 20px; height: 20px; cursor: pointer; opacity: 0; transition: 0.3s; z-index: 50; padding: 0; }
     .btn-download:hover { color: var(--leng); transform: scale(1.1); }
     .chart-card:hover .btn-download { opacity: 1; }
-
-    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -221,8 +219,16 @@
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
-        <div class="chart-header"><div class="chart-title">Evolución Histórica<span>Asistencia Promedio (Mes a Mes)</span></div></div>
+        <div class="chart-header"><div class="chart-title">Evolución Histórica<span>Asistencia Promedio (Mes a Mes) - Escala Ajustada (60% - 100%)</span></div></div>
         <div class="chart-wrap" style="height: 350px;"><canvas id="chart-asis-evo"></canvas></div>
+      </div>
+
+      <div class="chart-card full-width">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Variación Interanual de Asistencia<span>Diferencia en Puntos Porcentuales respecto al Año Anterior (Umbral 0%)</span></div></div>
+        <div class="chart-wrap" style="height: 280px;"><canvas id="chart-asis-var"></canvas></div>
       </div>
     </div>
   </div>
@@ -262,46 +268,12 @@
 </main>
 
 <script>
-// --- CONFIGURACIÓN DE FUENTE DE DATOS ---
-// Desarrollo local: CSV generado con exportar_datos.py
-// Producción futura: publicar la misma estructura en Google Sheets y cambiar USAR_DATOS_LOCALES a false
-const USAR_DATOS_LOCALES = true;
-const DATOS_CSV_LOCAL = 'datos_curso.csv';
+// --- CONFIGURACIÓN Y DICCIONARIOS DE ORDENAMIENTO ESTRICTO ---
 const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx2wv9TroK9XDnSw6J5G8LJAw11SeHS370_qI_vgzKeVeEO68NOSuMyQ-k2ww3-ns2XVC7JyrKBkbZ/pub?gid=0&single=true&output=csv';
 
-const ORDEN_MESES = ['1.Marzo','2.Abril','3.Mayo','4.Junio','5.Julio','6.Agosto','7.Septiembre','8.Octubre','9.Noviembre'];
-
-// Códigos SIGE → nombre legible (mantener Excel con códigos; el dashboard muestra texto)
-const MAP_ENSENANZA = {
-  '10':  'Educación Parvularia',
-  '110': 'Enseñanza Básica',
-  '165': 'Ed. Especial Parvularia',
-  '167': 'Ed. Especial Básica',
-  '211': 'Ed. Básica Adultos',
-  '212': 'Ed. Básica Adultos (Alternativa)',
-  '310': 'Enseñanza Media HC',
-  '363': 'Enseñanza Media HC Adultos',
-  '410': 'Enseñanza Media TP',
-  '510': 'Educación Especial',
-  '563': 'Programa Integración Escolar',
-  '610': 'Ed. Media TP Adultos',
-  '663': 'Ed. Media HC Adultos'
-};
-const ORDEN_ENSENANZA = [
-  'Educación Parvularia', 'Enseñanza Básica', 'Enseñanza Media HC', 'Enseñanza Media TP',
-  'Educación Especial', 'Ed. Especial Parvularia', 'Ed. Especial Básica',
-  'Ed. Básica Adultos', 'Ed. Básica Adultos (Alternativa)', 'Enseñanza Media HC Adultos',
-  'Enseñanza Media TP Adultos', 'Ed. Media HC Adultos', 'Ed. Media TP Adultos',
-  'Programa Integración Escolar'
-];
-const ORDEN_NIVEL = [
-  'Nivel de Transición 1', '1er Nivel de Transición (Pre-kinder)', 'Nivel de Transición 2', '2do Nivel de Transición (Kinder)',
-  '1° Básico', '2° Básico', '3° Básico', '4° Básico', '5° Básico', '6° Básico', '7° Básico', '8° Básico',
-  'Nivel Básico 1 (1° a 4° Básico)', 'Nivel Básico 2 (5° y 6° Básico)', 'Nivel Básico 3 (7° y 8° Básico)',
-  'I° Medio', 'II° Medio', 'III° Medio', 'IV° Medio',
-  '1er Nivel (1° y 2° Medio)', '2do Nivel (3° Medio)', '2do Nivel (3° y 4° Medio)', '3er Nivel (4° Medio)',
-  'Laboral 1', 'Laboral 2', 'Laboral 3'
-];
+const ORDEN_MESES = ['1','2','3','4','5','6','7','8','9','10','11','12','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const ORDEN_ENSENANZA = ['Educación Parvularia', 'Enseñanza Básica', 'Enseñanza Media', 'Educación de Adultos', 'Educación Especial'];
+const ORDEN_NIVEL = ['Sala Cuna', 'Medio Menor', 'Medio Mayor', '1er Nivel de Transición', '2do Nivel de Transición', '1° básico', '2° básico', '3° básico', '4° básico', '5° básico', '6° básico', '7° básico', '8° básico', '1° medio', '2° medio', '3° medio', '4° medio'];
 
 let DB_RAW = [];
 let ts = {};
@@ -310,44 +282,7 @@ let IS_ADMIN = false;
 let SESSION_RBD = null;
 let SHOW_SLEP = false;
 
-function normalizarEntero(valor) {
-  if (valor === null || valor === undefined || valor === '') return '';
-  const n = parseInt(parseFloat(String(valor).replace(/\./g, '').replace(',', '.')), 10);
-  return isNaN(n) ? String(valor).trim() : String(n);
-}
-
-function mapearEnsenanza(codigo) {
-  const cod = String(codigo ?? '').trim();
-  if (!cod) return '';
-  return MAP_ENSENANZA[cod] || MAP_ENSENANZA[cod.replace(/^0+/, '')] || `Enseñanza ${cod}`;
-}
-
-function obtenerUrlDatos() {
-  return USAR_DATOS_LOCALES ? DATOS_CSV_LOCAL : GOOGLE_SHEETS_CSV_URL;
-}
-
-function cargarDatos(onSuccess, onError) {
-  Papa.parse(obtenerUrlDatos(), {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: function(results) {
-      if (results.errors && results.errors.length > 0) {
-        console.warn('Advertencias al parsear CSV:', results.errors.slice(0, 3));
-      }
-      if (results.data && results.data.length > 0) {
-        onSuccess(results.data);
-      } else {
-        onError('La base de datos está vacía o el archivo CSV no responde.');
-      }
-    },
-    error: function() {
-      onError(USAR_DATOS_LOCALES
-        ? 'No se pudo cargar datos_curso.csv. Ejecuta exportar_datos.py y usa Live Server.'
-        : 'Error de conexión con Google Sheets.');
-    }
-  });
-}
+const V = { AGNO: 'agno', MES: 'mes', RBD: 'rbd', EST: 'establecimiento', ENS: 'enseñanza', NIV: 'nivel', LET: 'letra', ASIS: '%Asistencia', MAT: 'Matrícula' };
 
 // --- FUNCIÓN INTELIGENTE PARA LEER COLUMNAS SIN IMPORTAR TILDES O MAYÚSCULAS ---
 function encontrarValorColumna(fila, opcionesClave) {
@@ -357,7 +292,7 @@ function encontrarValorColumna(fila, opcionesClave) {
         let encontrada = nombresColumnas.find(k => 
             k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === claveLimpiaBusqueda
         );
-        if (encontrada && fila[encontrada] !== undefined && fila[encontrada] !== null) {
+        if (enenzada !== undefined && encontrada && fila[encontrada] !== undefined && fila[encontrada] !== null) {
             return fila[encontrada];
         }
     }
@@ -387,26 +322,37 @@ function handleLogin() {
   }
 
   loader.style.display = 'block';
-  cargarDatos(
-    function(data) { procesarDatos(data, user); },
-    function(msg) {
+  Papa.parse(GOOGLE_SHEETS_CSV_URL, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      if (results.data && results.data.length > 0) {
+        procesarDatos(results.data, user);
+      } else {
+        loader.style.display = 'none';
+        errorEl.innerText = "La base de datos está vacía.";
+        errorEl.style.display = 'block';
+      }
+    },
+    error: function(err) {
       loader.style.display = 'none';
-      errorEl.innerText = msg;
+      errorEl.innerText = "Error de conexión con Google Sheets.";
       errorEl.style.display = 'block';
     }
-  );
+  });
 }
 
 function procesarDatos(rawData, user) {
   DB_RAW = rawData.map(row => {
     let asisRaw = encontrarValorColumna(row, ['%asistencia', 'asistencia', 'porc_de_asistencia']);
-    let matRaw = encontrarValorColumna(row, ['matricula', 'matricula_cierre_mes', 'matrícula']);
+    let matRaw = encontrarValorColumna(row, ['matricula', 'matricula_cierre_mes']);
     let rbdEstRaw = encontrarValorColumna(row, ['rbd_establecimiento', 'establecimiento']);
     let rbdRaw = encontrarValorColumna(row, ['rbd']);
-
+    
     if (!rbdRaw && rbdEstRaw) {
-      let match = rbdEstRaw.toString().match(/^(\d+)/);
-      if (match) rbdRaw = match[1];
+        let match = rbdEstRaw.toString().match(/^(\d+)/);
+        if (match) rbdRaw = match[1];
     }
     if (!rbdEstRaw && rbdRaw) rbdEstRaw = rbdRaw;
 
@@ -414,16 +360,14 @@ function procesarDatos(rawData, user) {
     let asistencia = parseFloat(asisStr);
     if (asistencia > 1 && asistencia <= 100) asistencia = asistencia / 100;
 
-    let matricula = parseInt((matRaw || "0").toString().replace(/\./g,''), 10) || 0;
-    let ensCod = (encontrarValorColumna(row, ['enseñanza', 'ensenanza']) || "").toString().trim();
+    let matricula = parseInt((matRaw || "0").toString().replace(/\./g,''), 10) || 0; 
 
     return {
-      agno: normalizarEntero(encontrarValorColumna(row, ['agno', 'año', 'year'])),
+      agno: (encontrarValorColumna(row, ['agno', 'año', 'year']) || "").toString().trim(),
       mes: (encontrarValorColumna(row, ['mes', 'month']) || "").toString().trim(),
       rbd_est: rbdEstRaw.toString().trim(),
-      rbd_puro: normalizarEntero(rbdRaw),
-      ensenanza_cod: ensCod,
-      ensenanza: mapearEnsenanza(ensCod),
+      rbd_puro: rbdRaw.toString().trim(),
+      ensenanza: (encontrarValorColumna(row, ['enseñanza', 'ensenanza']) || "").toString().trim(),
       nivel: (encontrarValorColumna(row, ['nivel']) || "").toString().trim(),
       letra: (encontrarValorColumna(row, ['letra']) || "").toString().trim(),
       asistencia: isNaN(asistencia) ? 0 : asistencia,
@@ -431,19 +375,11 @@ function procesarDatos(rawData, user) {
     };
   }).filter(d => d.agno !== "" && d.matricula > 0);
 
-  document.getElementById('login-loader').style.display = 'none';
-
-  if (DB_RAW.length === 0) {
-    const errorEl = document.getElementById('login-error');
-    errorEl.innerText = "No hay filas válidas en la base de datos.";
-    errorEl.style.display = 'block';
-    return;
-  }
   if (user === 'admin') {
     IS_ADMIN = true;
   } else {
     IS_ADMIN = false;
-    SESSION_RBD = normalizarEntero(user);
+    SESSION_RBD = user;
     if (!DB_RAW.some(d => d.rbd_puro === SESSION_RBD)) {
         document.getElementById('login-loader').style.display = 'none';
         const errorEl = document.getElementById('login-error');
@@ -475,7 +411,6 @@ function iniciarInterfaz() {
   actualizarDashboard();
 }
 
-// --- CONFIGURACIÓN DE FILTROS TOMSELECT ---
 function configurarFiltros() {
   const mapeo = { agno: 'f-agno', mes: 'f-mes', ensenanza: 'f-ensenanza', nivel: 'f-nivel', letra: 'f-letra', rbd_est: 'f-rbd' };
   
@@ -498,7 +433,6 @@ function configurarFiltros() {
       return a.localeCompare(b, 'es', {numeric: true});
     });
 
-    // Fix: maxItems: null asegura que no se congele la selección múltiple
     ts[key] = new TomSelect(`#${mapeo[key]}`, {
       plugins: ['checkbox_options'],
       maxOptions: null,
@@ -513,19 +447,18 @@ function configurarFiltros() {
   });
 
   const agnos = [...new Set(DB_RAW.map(d => d.agno))];
-  ts['agno'].setValue(agnos, true); // true = silencioso, no dispara evento extra
+  ts['agno'].setValue(agnos, true);
 
   document.getElementById('btn-clear').onclick = () => { 
     Object.keys(ts).forEach(k => {
       if (!IS_ADMIN && k === 'rbd_est') return; 
-      ts[k].setValue([], true); // Fix: Usar setValue vacío en vez de clear
+      ts[k].setValue([], true);
     });
     ts['agno'].setValue(agnos, true); 
     actualizarDashboard();
   };
 }
 
-// --- LOGICA PRINCIPAL BLINDADA ---
 function actualizarDashboard() {
   try {
       const getArr = (id) => { let v = ts[id].getValue(); return Array.isArray(v) ? v : (v ? [v] : []); };
@@ -578,7 +511,6 @@ function actualizarDashboard() {
       }
 
       datosFiltrados.forEach(d => {
-        // Fix Crítico: Ignorar asistencia 0 para no desplomar el promedio
         if (d.asistencia > 0) {
             asisPonderadaSum += (d.asistencia * d.matricula);
             matTotalForAsis += d.matricula;
@@ -610,6 +542,8 @@ function actualizarDashboard() {
       let evoMatData = { labels: mesesUnicosArr, datasets: [] };
       let colors = ['#0284c7', '#ea580c', '#1a7f37', '#8250df'];
 
+      let asisPorAgno = {};
+
       agnosUnicosArr.forEach((agno, idx) => {
         let dataAsis = [], dataMat = [], dataAsisSlep = [];
         
@@ -634,6 +568,8 @@ function actualizarDashboard() {
           }
         });
 
+        asisPorAgno[agno] = dataAsis;
+
         evoAsisData.datasets.push(crearDatasetLineal(`Asistencia ${agno}`, dataAsis, colors[idx % colors.length], false));
         evoMatData.datasets.push(crearDatasetBarras(`Matrícula ${agno}`, dataMat, colors[idx % colors.length]));
         
@@ -642,7 +578,37 @@ function actualizarDashboard() {
         }
       });
 
+      // Cálculo de Variación Interanual (Requerimiento 2)
+      let evoVarData = { labels: mesesUnicosArr, datasets: [] };
+      if (agnosUnicosArr.length >= 2) {
+          let agnoActual = agnosUnicosArr[agnosUnicosArr.length - 1];
+          let agnoAnterior = agnosUnicosArr[agnosUnicosArr.length - 2];
+          let dataVar = [];
+
+          mesesUnicosArr.forEach((mes, mIdx) => {
+              let valActual = asisPorAgno[agnoActual] ? asisPorAgno[agnoActual][mIdx] : null;
+              let valAnterior = asisPorAgno[agnoAnterior] ? asisPorAgno[agnoAnterior][mIdx] : null;
+              if (valActual !== null && valAnterior !== null) {
+                  dataVar.push(valActual - valAnterior); 
+              } else {
+                  dataVar.push(null);
+              }
+          });
+
+          evoVarData.datasets.push({
+              label: `Diferencia ${agnoActual} vs ${agnoAnterior}`,
+              data: dataVar,
+              borderColor: '#cf222e',
+              backgroundColor: 'rgba(207, 34, 46, 0.1)',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#cf222e',
+              tension: 0.2,
+              fill: true
+          });
+      }
+      
       actualizarGrafico(charts['asis-evo'], evoAsisData);
+      actualizarGrafico(charts['asis-var'], evoVarData);
       actualizarGrafico(charts['mat-evo'], evoMatData);
 
       let datosCorte = [];
@@ -666,7 +632,6 @@ function agruparPorCategoria(data, variable, arrayOrdenamiento) {
     data.forEach(d => {
         let k = d[variable];
         if(!grupos[k]) grupos[k] = { asisSum: 0, matSum: 0 };
-        // Solo calcular promedio con asistencia válida
         if(d.asistencia > 0) {
             grupos[k].matSum += d.matricula;
             grupos[k].asisSum += (d.asistencia * d.matricula);
@@ -701,7 +666,12 @@ function toggleTheme() {
   const textColor = isDark ? '#7d8590' : '#57606a';
   Object.values(charts).forEach(chart => {
       if(chart.options.scales.x) { chart.options.scales.x.grid.color = gridColor; chart.options.scales.x.ticks.color = textColor; }
-      if(chart.options.scales.y) { chart.options.scales.y.grid.color = gridColor; chart.options.scales.y.ticks.color = textColor; }
+      if(chart.options.scales.y) { 
+          if (chart.canvas.id !== 'chart-asis-var') {
+              chart.options.scales.y.grid.color = gridColor; 
+          }
+          chart.options.scales.y.ticks.color = textColor; 
+      }
       chart.update();
   });
 }
@@ -710,113 +680,68 @@ function showTab(tabId, e) {
   document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(tabId).style.display = 'block';
-  if (e) e.currentTarget.classList.add('active');
+  if(e) e.currentTarget.classList.add('active');
 }
 
-function toggleSlep() {
-  SHOW_SLEP = document.getElementById('slep-toggle').checked;
-  actualizarDashboard();
+function toggleSlep() { SHOW_SLEP = document.getElementById('slep-toggle').checked; document.getElementById('slep-label-text').style.color = SHOW_SLEP ? 'var(--leng)' : 'var(--text-muted)'; actualizarDashboard(); }
+
+function initCharts() {
+  // Requerimiento 1: Zoom de Asistencia fijado entre 60% (0.6) y 100% (1.0)
+  const getOptLine = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0.6, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.raw * 100).toFixed(1) + '%' } } } });
+  const getOptBar = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
+  const getOptHBar = () => ({ responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0.5, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { legend:{display:false}, tooltip: { callbacks: { label: c => (c.raw * 100).toFixed(1) + '%' } } } });
+
+  // Opciones para el gráfico de variación con resaltado en la línea base del 0%
+  const getOptVar = () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    const gridColor = isDark ? '#21262d' : '#e5e7eb';
+    const textColor = isDark ? '#7d8590' : '#57606a';
+    return {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+        y: {
+          grid: {
+            color: function(context) {
+              const innerDark = document.body.classList.contains('dark-theme');
+              if (context.tick && context.tick.value === 0) return innerDark ? '#f87171' : '#cf222e'; // Línea del 0% en rojo
+              return innerDark ? '#21262d' : '#e5e7eb';
+            },
+            lineWidth: (context) => context.tick && context.tick.value === 0 ? 2 : 1
+          },
+          ticks: {
+            color: textColor,
+            callback: v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%'
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+              label: c => `${c.dataset.label}: ${c.raw >= 0 ? '+' : ''}${(c.raw * 100).toFixed(1)}%`
+          }
+        }
+      }
+    };
+  };
+
+  charts['asis-evo'] = new Chart(document.getElementById('chart-asis-evo'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLine() });
+  charts['asis-var'] = new Chart(document.getElementById('chart-asis-var'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptVar() });
+  charts['mat-evo'] = new Chart(document.getElementById('chart-mat-evo'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptBar() });
+  charts['asis-ensenanza'] = new Chart(document.getElementById('chart-asis-ensenanza'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
+  charts['asis-nivel'] = new Chart(document.getElementById('chart-asis-nivel'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
+  toggleTheme(); 
 }
 
 function descargarGrafico(btn) {
   const card = btn.closest('.chart-card');
-  if (!card || typeof html2canvas !== 'function') return;
-  html2canvas(card, {
-    scale: 2,
-    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff',
-    useCORS: true
-  }).then(canvas => {
-    const link = document.createElement('a');
-    link.download = 'grafico_slep.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  }).catch(err => console.error('Error al descargar gráfico:', err));
-}
-
-function opcionesChartBase() {
-  const gridColor = document.body.classList.contains('dark-theme') ? '#21262d' : '#e5e7eb';
-  const textColor = document.body.classList.contains('dark-theme') ? '#7d8590' : '#57606a';
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { labels: { color: textColor, font: { family: 'Archivo', size: 11 } } },
-      tooltip: {
-        callbacks: {
-          label: ctx => {
-            const v = ctx.parsed.y ?? ctx.parsed.x;
-            if (v === null || v === undefined) return '';
-            if (ctx.chart.config.type === 'line' || ctx.chart.options.indexAxis === 'y') {
-              return `${ctx.dataset.label}: ${(v * 100).toFixed(1)}%`;
-            }
-            return `${ctx.dataset.label}: ${Number(v).toLocaleString('es-CL')}`;
-          }
-        }
-      }
-    },
-    scales: {
-      x: { grid: { color: gridColor }, ticks: { color: textColor } },
-      y: { grid: { color: gridColor }, ticks: { color: textColor } }
-    }
-  };
-}
-
-function initCharts() {
-  const base = opcionesChartBase();
-
-  charts['asis-evo'] = new Chart(document.getElementById('chart-asis-evo'), {
-    type: 'line',
-    data: { labels: [], datasets: [] },
-    options: {
-      ...base,
-      scales: {
-        x: base.scales.x,
-        y: {
-          ...base.scales.y,
-          min: 0,
-          max: 1,
-          ticks: { ...base.scales.y.ticks, callback: v => (v * 100).toFixed(0) + '%' }
-        }
-      }
-    }
-  });
-
-  charts['mat-evo'] = new Chart(document.getElementById('chart-mat-evo'), {
-    type: 'bar',
-    data: { labels: [], datasets: [] },
-    options: {
-      ...base,
-      scales: {
-        x: base.scales.x,
-        y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, callback: v => Number(v).toLocaleString('es-CL') } }
-      }
-    }
-  });
-
-  const hBarOpts = (color) => ({
-    ...base,
-    indexAxis: 'y',
-    scales: {
-      x: {
-        ...base.scales.x,
-        min: 0,
-        max: 1,
-        ticks: { ...base.scales.x.ticks, callback: v => (v * 100).toFixed(0) + '%' }
-      },
-      y: { ...base.scales.y, ticks: { ...base.scales.y.ticks, autoSkip: false } }
-    }
-  });
-
-  charts['asis-ensenanza'] = new Chart(document.getElementById('chart-asis-ensenanza'), {
-    type: 'bar',
-    data: { labels: [], datasets: [] },
-    options: hBarOpts('#8250df')
-  });
-
-  charts['asis-nivel'] = new Chart(document.getElementById('chart-asis-nivel'), {
-    type: 'bar',
-    data: { labels: [], datasets: [] },
-    options: hBarOpts('#ea580c')
+  btn.style.opacity = '0'; 
+  const titleEl = card.querySelector('.chart-title');
+  let fileName = titleEl ? titleEl.innerText.replace(/\n/g, '_').replace(/ /g, '_') + '.png' : 'Grafico.png';
+  const isDark = document.body.classList.contains('dark-theme');
+  html2canvas(card, { backgroundColor: isDark ? '#161b22' : '#ffffff', scale: 2 }).then(canvas => {
+    const link = document.createElement('a'); link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
+    btn.style.opacity = ''; 
   });
 }
 </script>
