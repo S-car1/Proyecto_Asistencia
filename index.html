@@ -57,7 +57,7 @@
     /* NAVBAR & FILTROS */
     .sticky-top-section { position: sticky; top: 0; z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
     body.dark-theme .sticky-top-section { box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-    .header { padding: 1rem 2rem 0.5rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .header { padding: 1rem 2rem 0.5rem 2rem; display: flex; justify-content: space-between; align-items: flex-start; }
     .header-info { display: flex; align-items: center; gap: 1rem; }
     .filter-bar { padding: 0.5rem 2rem 0.8rem 2rem; display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; }
     .filter-group { position: relative; transition: opacity 0.3s; }
@@ -114,6 +114,12 @@
     .chart-card:hover .btn-download { opacity: 1; }
 
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
+
+    .active-filters-tray { display: block; padding-top: 0.4rem; }
+    .filter-group-tag { display: inline-flex; align-items: center; margin: 0 0.5rem 0.5rem 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .filter-group-label { padding: 4px 8px; font-size: 0.65rem; font-weight: 800; color: var(--leng); background: rgba(56,189,248,0.05); border-right: 1px solid var(--border); cursor: pointer; }
+    .filter-value-tag { padding: 4px 10px; font-size: 0.75rem; color: var(--text); cursor: pointer; display: flex; align-items: center; border-right: 1px solid var(--border); }
+    .filter-value-tag:hover { background: var(--surface-2); text-decoration: line-through; color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -265,9 +271,9 @@
 // --- CONFIGURACIÓN DE FUENTE DE DATOS ---
 // Desarrollo local: CSV generado con exportar_datos.py
 // Producción futura: publicar la misma estructura en Google Sheets y cambiar USAR_DATOS_LOCALES a false
-const USAR_DATOS_LOCALES = false;
+const USAR_DATOS_LOCALES = true;
 const DATOS_CSV_LOCAL = 'datos_curso.csv';
-const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx2wv9TroK9XDnSw6J5G8LJAw11SeHS370_qI_vgzKeVeEO68NOSuMyQ-k2ww3-ns2XVC7JyrKBkbZ/pub?gid=45523755&single=true&output=csv';
+const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx2wv9TroK9XDnSw6J5G8LJAw11SeHS370_qI_vgzKeVeEO68NOSuMyQ-k2ww3-ns2XVC7JyrKBkbZ/pub?gid=0&single=true&output=csv';
 
 const ORDEN_MESES = ['1.Marzo','2.Abril','3.Mayo','4.Junio','5.Julio','6.Agosto','7.Septiembre','8.Octubre','9.Noviembre'];
 
