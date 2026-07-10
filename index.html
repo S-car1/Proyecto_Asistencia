@@ -109,6 +109,17 @@
     .kpi-val { font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--kpi-c); }
     .kpi-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; }
 
+    .tabla-cob { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .tabla-cob th { text-align: left; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .tabla-cob td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .tabla-cob tr.fila-est { cursor: pointer; }
+    .tabla-cob tr.fila-est:hover { background: var(--surface-2); }
+    .tabla-cob tr.fila-curso td { background: var(--surface-2); font-size: 0.8rem; color: var(--text-muted); }
+    .tabla-cob tr.fila-curso.oculto { display: none; }
+    .tabla-cob .chevron { display: inline-block; transition: transform 0.2s; margin-right: 0.5rem; color: var(--text-muted); }
+    .tabla-cob tr.fila-est.abierta .chevron { transform: rotate(90deg); }
+    .badge-cob { font-family: var(--mono); font-weight: 700; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
+
     .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
     .chart-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem 1.4rem; min-height: 400px; display: flex; flex-direction: column; }
     .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.1rem; }
@@ -129,8 +140,8 @@
     <h2>Portal de Asistencia y Matrícula</h2>
     <p>Ingresa tus credenciales institucionales.</p>
     <div class="input-group">
-      <label>USUARIO</label>
-      <input type="text" id="login-user" placeholder="RBD">
+      <label>USUARIO (RBD O ADMIN)</label>
+      <input type="text" id="login-user" placeholder="Ej: 1234">
     </div>
     <div class="input-group">
       <label>Contraseña</label>
@@ -185,7 +196,7 @@
 
     <button class="tab-btn active" onclick="showTab('tab-general', event)">Panorama General</button>
     <button class="tab-btn" onclick="showTab('tab-niveles', event)">Análisis por Niveles</button>
-    <button class="tab-btn" onclick="showTab('tab-retencion', event)">Retención y Matrícula (Piloto)</button>
+    <button class="tab-btn" onclick="showTab('tab-retencion', event)">Retención y Matrícula</button>
     
     <div class="slep-toggle-wrapper">
       <span class="slep-toggle-label" id="slep-label-text">PROMEDIO SLEP</span>
@@ -263,17 +274,30 @@
   </div>
 
   <div id="tab-retencion" class="tab-content" style="display:none;">
+    <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+      <div class="kpi" style="--kpi-c: var(--leng)">
+        <div class="kpi-label">Cupos 2026</div>
+        <div class="kpi-val" id="kpi-cupos">—</div>
+        <div class="kpi-desc">Total disponible (Junio)</div>
+      </div>
+      <div class="kpi" style="--kpi-c: var(--purple)">
+        <div class="kpi-label">Cobertura</div>
+        <div class="kpi-val" id="kpi-cobertura">—</div>
+        <div class="kpi-desc">Matrícula − Cupos 2026</div>
+      </div>
+      <div class="kpi" style="--kpi-c: var(--total)">
+        <div class="kpi-label">% Cobertura Promedio</div>
+        <div class="kpi-val" id="kpi-pct-cobertura">—</div>
+        <div class="kpi-desc">Matrícula / Cupos 2026</div>
+      </div>
+    </div>
     <div class="charts-grid">
       <div class="chart-card full-width">
-        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        </button>
-        <div class="chart-header"><div class="chart-title">Fluctuación de Estudiantes<span>Evolución de la Matrícula Total (Mes a Mes)</span></div></div>
-        <div class="chart-wrap" style="height: 350px;"><canvas id="chart-mat-evo"></canvas></div>
+        <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span>Junio 2026 · Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)</span></div></div>
+        <div id="tabla-cobertura-wrap"></div>
       </div>
     </div>
   </div>
-
 </main>
 
 <script>
@@ -378,6 +402,13 @@ function procesarDatos(rawData, user) {
 
     let matricula = parseInt((matRaw || "0").toString().replace(/\./g,''), 10) || 0; 
 
+    let cuposRaw = encontrarValorColumna(row, ['cupos_2026', 'cupos 2026', 'cupos2026']);
+    let cupos2026 = null;
+    if (cuposRaw !== "" && cuposRaw !== undefined && cuposRaw !== null) {
+      let nCupos = parseInt(cuposRaw.toString().replace(/\./g,''), 10);
+      cupos2026 = isNaN(nCupos) ? null : nCupos;
+    }
+
     return {
       agno: (encontrarValorColumna(row, ['agno', 'año', 'year']) || "").toString().trim(),
       mes: (encontrarValorColumna(row, ['mes', 'month']) || "").toString().trim(),
@@ -387,7 +418,8 @@ function procesarDatos(rawData, user) {
       nivel: (encontrarValorColumna(row, ['nivel']) || "").toString().trim(),
       letra: (encontrarValorColumna(row, ['letra']) || "").toString().trim(),
       asistencia: isNaN(asistencia) ? 0 : asistencia,
-      matricula: matricula
+      matricula: matricula,
+      cupos2026: cupos2026
     };
   }).filter(d => d.agno !== "" && d.matricula > 0);
 
@@ -506,6 +538,93 @@ function renderActiveFiltersTray() {
   });
 
   tray.style.display = hasFilters ? 'block' : 'none';
+}
+
+function colorCobertura(pct) {
+  if (pct === null) return 'var(--text-muted)';
+  if (pct >= 100) return 'var(--red)';
+  if (pct >= 85) return 'var(--total)';
+  return 'var(--text-muted)';
+}
+
+function toggleFilaCobertura(idx) {
+  document.querySelectorAll('.fila-curso-' + idx).forEach(tr => tr.classList.toggle('oculto'));
+  document.getElementById('fila-est-' + idx).classList.toggle('abierta');
+}
+
+function renderTablaCobertura(datosFiltrados) {
+  const wrap = document.getElementById('tabla-cobertura-wrap');
+  if (!wrap) return;
+
+  const datosCob = datosFiltrados.filter(d => d.cupos2026 !== null);
+
+  let totalMat = 0, totalCupos = 0;
+  const porEst = {};
+  datosCob.forEach(d => {
+    totalMat += d.matricula; totalCupos += d.cupos2026;
+    if (!porEst[d.rbd_est]) porEst[d.rbd_est] = { matricula: 0, cupos: 0, cursos: {} };
+    porEst[d.rbd_est].matricula += d.matricula;
+    porEst[d.rbd_est].cupos += d.cupos2026;
+    const cKey = `${d.nivel} ${d.letra}`.trim();
+    if (!porEst[d.rbd_est].cursos[cKey]) porEst[d.rbd_est].cursos[cKey] = { matricula: 0, cupos: 0 };
+    porEst[d.rbd_est].cursos[cKey].matricula += d.matricula;
+    porEst[d.rbd_est].cursos[cKey].cupos += d.cupos2026;
+  });
+
+  document.getElementById('kpi-cupos').innerText = totalCupos > 0 ? totalCupos.toLocaleString('es-CL') : '—';
+  const cobTotal = totalMat - totalCupos;
+  document.getElementById('kpi-cobertura').innerText = totalCupos > 0 ? (cobTotal >= 0 ? '+' : '') + cobTotal.toLocaleString('es-CL') : '—';
+  document.getElementById('kpi-pct-cobertura').innerText = totalCupos > 0 ? (totalMat / totalCupos * 100).toFixed(1) + '%' : '—';
+
+  if (Object.keys(porEst).length === 0) {
+    wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos de cobertura para los filtros actuales (esta información solo existe para Junio 2026).</p>';
+    return;
+  }
+
+  const establecimientos = Object.keys(porEst).sort((a, b) => {
+    const pa = porEst[a].cupos > 0 ? porEst[a].matricula / porEst[a].cupos : 0;
+    const pb = porEst[b].cupos > 0 ? porEst[b].matricula / porEst[b].cupos : 0;
+    return pb - pa;
+  });
+
+  let html = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th><th>Matrícula</th><th>Cupos 2026</th><th>Cobertura</th><th>% Cobertura</th></tr></thead><tbody>';
+
+  establecimientos.forEach((est, idx) => {
+    const e = porEst[est];
+    const pct = e.cupos > 0 ? (e.matricula / e.cupos * 100) : null;
+    const cob = e.matricula - e.cupos;
+    const color = colorCobertura(pct);
+    html += `<tr class="fila-est" id="fila-est-${idx}" onclick="toggleFilaCobertura(${idx})">
+      <td><span class="chevron">▶</span>${est}</td>
+      <td>${e.matricula.toLocaleString('es-CL')}</td>
+      <td>${e.cupos.toLocaleString('es-CL')}</td>
+      <td>${cob >= 0 ? '+' : ''}${cob.toLocaleString('es-CL')}</td>
+      <td><span class="badge-cob" style="color:${color}">${pct !== null ? pct.toFixed(1) + '%' : '—'}</span></td>
+    </tr>`;
+
+    const cursos = Object.keys(e.cursos).sort((a, b) => {
+      const ia = ORDEN_NIVEL.findIndex(n => a.startsWith(n));
+      const ib = ORDEN_NIVEL.findIndex(n => b.startsWith(n));
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+
+    cursos.forEach(cKey => {
+      const c = e.cursos[cKey];
+      const cPct = c.cupos > 0 ? (c.matricula / c.cupos * 100) : null;
+      const cCob = c.matricula - c.cupos;
+      const cColor = colorCobertura(cPct);
+      html += `<tr class="fila-curso oculto fila-curso-${idx}">
+        <td style="padding-left:2rem;">${cKey}</td>
+        <td>${c.matricula.toLocaleString('es-CL')}</td>
+        <td>${c.cupos.toLocaleString('es-CL')}</td>
+        <td>${cCob >= 0 ? '+' : ''}${cCob.toLocaleString('es-CL')}</td>
+        <td><span class="badge-cob" style="color:${cColor}">${cPct !== null ? cPct.toFixed(1) + '%' : '—'}</span></td>
+      </tr>`;
+    });
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
 }
 
 function actualizarDashboard() {
@@ -659,7 +778,7 @@ function actualizarDashboard() {
       
       actualizarGrafico(charts['asis-evo'], evoAsisData);
       actualizarGrafico(charts['asis-var'], evoVarData);
-      actualizarGrafico(charts['mat-evo'], evoMatData);
+      renderTablaCobertura(datosFiltrados);
 
       let datosCorte = [];
       if (ultimoAgno && ultimoMes) {
@@ -777,7 +896,7 @@ function initCharts() {
 
   charts['asis-evo'] = new Chart(document.getElementById('chart-asis-evo'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLine() });
   charts['asis-var'] = new Chart(document.getElementById('chart-asis-var'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptVar() });
-  charts['mat-evo'] = new Chart(document.getElementById('chart-mat-evo'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptBar() });
+
   charts['asis-ensenanza'] = new Chart(document.getElementById('chart-asis-ensenanza'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
   charts['asis-nivel'] = new Chart(document.getElementById('chart-asis-nivel'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
   toggleTheme(); 
