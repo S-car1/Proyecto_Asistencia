@@ -119,6 +119,9 @@
     .tabla-cob .chevron { display: inline-block; transition: transform 0.2s; margin-right: 0.5rem; color: var(--text-muted); }
     .tabla-cob tr.fila-est.abierta .chevron { transform: rotate(90deg); }
     .badge-cob { font-family: var(--mono); font-weight: 700; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
+    .variacion-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 0.5rem 0 0.25rem 0; }
+    .variacion-item .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .variacion-item .kpi-val { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; }
 
     .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
     .chart-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem 1.4rem; min-height: 400px; display: flex; flex-direction: column; }
@@ -274,6 +277,12 @@
   </div>
 
   <div id="tab-retencion" class="tab-content" style="display:none;">
+    <div class="charts-grid" style="margin-bottom: 1.5rem;">
+      <div class="chart-card full-width">
+        <div class="chart-header"><div class="chart-title">Variación de Matrícula del Año<span>Primer vs. último mes con datos del año más reciente</span></div></div>
+        <div id="variacion-anual-wrap"></div>
+      </div>
+    </div>
     <div class="kpi-grid" style="margin-bottom: 1.5rem;">
       <div class="kpi" style="--kpi-c: var(--leng)">
         <div class="kpi-label">Cupos 2026</div>
@@ -627,6 +636,40 @@ function renderTablaCobertura(datosFiltrados) {
   wrap.innerHTML = html;
 }
 
+function renderVariacionAnual(datosFiltrados) {
+  const wrap = document.getElementById('variacion-anual-wrap');
+  if (!wrap) return;
+
+  const agnos = [...new Set(datosFiltrados.map(d => d.agno))];
+  if (agnos.length === 0) { wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos para los filtros actuales.</p>'; return; }
+  const agnoReciente = agnos.sort((a, b) => Number(b) - Number(a))[0];
+
+  const datosAgno = datosFiltrados.filter(d => d.agno === agnoReciente);
+  const meses = [...new Set(datosAgno.map(d => d.mes))].sort((a, b) => ORDEN_MESES.indexOf(a) - ORDEN_MESES.indexOf(b));
+
+  if (meses.length === 0) { wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos para los filtros actuales.</p>'; return; }
+
+  const mesBase = meses[0];
+  const mesUltimo = meses[meses.length - 1];
+  const matBase = datosAgno.filter(d => d.mes === mesBase).reduce((s, d) => s + d.matricula, 0);
+  const matUltimo = datosAgno.filter(d => d.mes === mesUltimo).reduce((s, d) => s + d.matricula, 0);
+  const diff = matUltimo - matBase;
+  const pct = matBase > 0 ? (diff / matBase * 100) : null;
+  const color = diff > 0 ? 'var(--total)' : (diff < 0 ? 'var(--red)' : 'var(--text)');
+
+  if (meses.length < 2) {
+    wrap.innerHTML = `<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Solo hay un mes cargado para ${agnoReciente} (${mesBase}). La comparación estará disponible cuando se cargue un segundo mes.</p>`;
+    return;
+  }
+
+  wrap.innerHTML = `<div class="variacion-grid">
+    <div class="variacion-item"><div class="kpi-label">Matrícula ${mesBase} ${agnoReciente}</div><div class="kpi-val">${matBase.toLocaleString('es-CL')}</div></div>
+    <div class="variacion-item"><div class="kpi-label">Matrícula ${mesUltimo} ${agnoReciente}</div><div class="kpi-val">${matUltimo.toLocaleString('es-CL')}</div></div>
+    <div class="variacion-item"><div class="kpi-label">Diferencia</div><div class="kpi-val" style="color:${color}">${diff >= 0 ? '+' : ''}${diff.toLocaleString('es-CL')}</div></div>
+    <div class="variacion-item"><div class="kpi-label">Variación</div><div class="kpi-val" style="color:${color}">${pct !== null ? (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%' : '—'}</div></div>
+  </div>`;
+}
+
 function actualizarDashboard() {
   try {
       renderActiveFiltersTray();
@@ -779,6 +822,7 @@ function actualizarDashboard() {
       actualizarGrafico(charts['asis-evo'], evoAsisData);
       actualizarGrafico(charts['asis-var'], evoVarData);
       renderTablaCobertura(datosFiltrados);
+      renderVariacionAnual(datosFiltrados);
 
       let datosCorte = [];
       if (ultimoAgno && ultimoMes) {
