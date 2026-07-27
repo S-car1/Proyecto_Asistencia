@@ -104,6 +104,25 @@
     
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
     .kpi-grid-compact { grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); justify-content: start; }
+
+    .chart-empty-msg { display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 0 2rem; }
+    .selector-colegios { display: flex; gap: 0.75rem; align-items: flex-start; }
+    .buscador-colegios-wrap { position: relative; flex: 1; }
+    .input-buscador { width: 100%; box-sizing: border-box; padding: 0.55rem 0.75rem; font-family: var(--font); font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+    .input-buscador:focus { outline: none; border-color: var(--leng); }
+    .sugerencias-colegios { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; max-height: 240px; overflow-y: auto; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .sugerencia-item { padding: 0.5rem 0.75rem; font-size: 0.82rem; cursor: pointer; color: var(--text); }
+    .sugerencia-item:hover { background: var(--surface-2); }
+    .sugerencia-vacia { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text-muted); }
+    .btn-limpiar-colegios { flex-shrink: 0; padding: 0.55rem 0.9rem; font-family: var(--font); font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+    .btn-limpiar-colegios:hover { background: var(--surface-2); color: var(--text); }
+    .chips-colegios { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; min-height: 2rem; max-height: 320px; overflow-y: auto; padding-right: 0.25rem; align-content: flex-start; }
+    .chips-vacio { font-size: 0.8rem; color: var(--text-muted); }
+    .chip-colegio { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.55rem; border: 1px solid; border-radius: 999px; font-family: var(--font); font-size: 0.78rem; background: var(--surface-2); color: var(--text); cursor: pointer; transition: filter 0.15s, background 0.15s; }
+    .chip-colegio:hover { background: var(--border); }
+    .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .chip-x { color: var(--text-muted); font-size: 1rem; line-height: 1; }
+    .chip-colegio:hover .chip-x { color: var(--text); }
     .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.25rem; position: relative; }
     .kpi::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--kpi-c); opacity: 0.5; }
     .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
@@ -318,34 +337,53 @@
   </div>
 
   <div id="tab-colegios" class="tab-content" style="display:none;">
+    <div class="chart-card full-width" style="margin-bottom: 1.5rem; overflow: visible;">
+      <div class="chart-header"><div class="chart-title">Selección de Establecimientos<span>Busca y agrega colegios para comparar en los gráficos (mínimo 2)</span></div></div>
+      <div class="selector-colegios">
+        <div class="buscador-colegios-wrap">
+          <input type="text" id="buscador-colegios" class="input-buscador" placeholder="Buscar establecimiento por nombre o RBD..." autocomplete="off" oninput="filtrarSugerenciasColegios()" onfocus="filtrarSugerenciasColegios()">
+          <div id="sugerencias-colegios" class="sugerencias-colegios" style="display:none;"></div>
+        </div>
+        <button type="button" class="btn-limpiar-colegios" id="btn-todos-colegios" onclick="seleccionarTodosColegios()">Seleccionar todos</button>
+        <button type="button" class="btn-limpiar-colegios" onclick="limpiarSeleccionColegios()">Limpiar selección</button>
+      </div>
+      <div id="chips-colegios" class="chips-colegios"></div>
+    </div>
+
     <div class="charts-grid">
       <div class="chart-card full-width">
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
-        <div class="chart-header"><div class="chart-title">Evolución de Asistencia Mensual<span>Una línea por establecimiento (RBD)</span></div></div>
-        <div class="chart-wrap" style="height: 480px;"><canvas id="chart-colegios-asis"></canvas></div>
+        <div class="chart-header"><div class="chart-title">Evolución de Asistencia Mensual<span id="colegios-desc-asis-chart">Una línea por establecimiento (RBD)</span></div></div>
+        <div class="chart-wrap" style="height: 480px;">
+          <canvas id="chart-colegios-asis" style="display:none;"></canvas>
+          <div id="chart-colegios-asis-empty" class="chart-empty-msg">Selecciona al menos dos establecimientos para generar la comparación.</div>
+        </div>
       </div>
 
       <div class="chart-card full-width">
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
-        <div class="chart-header"><div class="chart-title">Evolución de Matrícula Mensual<span>Una línea por establecimiento (RBD)</span></div></div>
-        <div class="chart-wrap" style="height: 480px;"><canvas id="chart-colegios-mat"></canvas></div>
+        <div class="chart-header"><div class="chart-title">Evolución de Matrícula Mensual<span id="colegios-desc-mat-chart">Una línea por establecimiento (RBD)</span></div></div>
+        <div class="chart-wrap" style="height: 480px;">
+          <canvas id="chart-colegios-mat" style="display:none;"></canvas>
+          <div id="chart-colegios-mat-empty" class="chart-empty-msg">Selecciona al menos dos establecimientos para generar la comparación.</div>
+        </div>
       </div>
     </div>
 
     <div class="charts-grid" style="margin-top: 1.5rem;">
       <div class="chart-card full-width">
-        <div class="chart-header"><div class="chart-title">Asistencia por Establecimiento<span>Detalle mensual y acumulado anual ponderado (Suma Asistencia×Matrícula / Suma Matrícula)</span></div></div>
+        <div class="chart-header"><div class="chart-title">Asistencia por Establecimiento<span id="colegios-desc-asis-tabla">Detalle mensual y acumulado anual ponderado (Suma Asistencia×Matrícula / Suma Matrícula)</span></div></div>
         <div id="tabla-colegios-asis-wrap" style="overflow-x:auto;"></div>
       </div>
     </div>
 
     <div class="charts-grid" style="margin-top: 1.5rem;">
       <div class="chart-card full-width">
-        <div class="chart-header"><div class="chart-title">Matrícula por Establecimiento<span>Detalle mensual y promedio anual</span></div></div>
+        <div class="chart-header"><div class="chart-title">Matrícula por Establecimiento<span id="colegios-desc-mat-tabla">Detalle mensual y promedio anual</span></div></div>
         <div id="tabla-colegios-mat-wrap" style="overflow-x:auto;"></div>
       </div>
     </div>
@@ -948,10 +986,23 @@ function actualizarGraficoHBar(chart, labels, data, color) { chart.data = { labe
 
 // --- REQUERIMIENTO: ANÁLISIS POR COLEGIO (SOLO ADMIN) ---
 // Color distintivo por establecimiento usando ángulo dorado, para separar visualmente
-// hasta ~80 líneas sin repetir tonos cercanos.
+// hasta ~80 líneas sin repetir tonos cercanos. Se calcula por posición en la lista
+// alfabética completa, así un mismo colegio conserva su color entre renders.
 function colorEstablecimiento(idx) {
     const hue = (idx * 137.508) % 360;
     return `hsl(${hue.toFixed(1)}, 65%, 45%)`;
+}
+
+// Selección persistente de establecimientos para los gráficos spaghetti (vacía al inicio,
+// se mantiene entre cambios de filtro hasta que el usuario la modifique o la limpie).
+let colegiosSeleccionados = new Set();
+// Caché del último cálculo (meses/establecimientos/agrupación), para que agregar o quitar
+// un colegio del selector solo redibuje, sin tener que refiltrar toda la base de nuevo.
+let ACC_COLEGIOS = { meses: [], establecimientos: [], agrup: {} };
+
+function colorEstablecimientoPorNombre(est) {
+    const idx = ACC_COLEGIOS.establecimientos.indexOf(est);
+    return colorEstablecimiento(idx >= 0 ? idx : 0);
 }
 
 function renderAnalisisColegios(datosFiltrados) {
@@ -959,8 +1010,19 @@ function renderAnalisisColegios(datosFiltrados) {
     const wrapMat = document.getElementById('tabla-colegios-mat-wrap');
     if (!wrapAsis || !wrapMat) return;
 
-    const meses = [...new Set(datosFiltrados.map(d => d.mes))].sort((a, b) => ordenMes(a) - ordenMes(b));
-    const establecimientos = [...new Set(datosFiltrados.map(d => d.rbd_est))].sort((a, b) => a.localeCompare(b, 'es'));
+    // Restringido al año más reciente disponible: los meses se agrupan solo por nombre
+    // ("1.Marzo"), así que mezclar dos años sumaría, por ejemplo, Marzo 2025 con Marzo 2026
+    // bajo la misma columna. Se toma dinámicamente el año mayor, no un valor fijo.
+    const agnosDisponiblesColegios = [...new Set(datosFiltrados.map(d => d.agno))];
+    const agnoRecienteColegios = agnosDisponiblesColegios.length > 0
+        ? Math.max(...agnosDisponiblesColegios.map(Number)).toString()
+        : null;
+    const datosColegios = agnoRecienteColegios
+        ? datosFiltrados.filter(d => d.agno === agnoRecienteColegios)
+        : [];
+
+    const meses = [...new Set(datosColegios.map(d => d.mes))].sort((a, b) => ordenMes(a) - ordenMes(b));
+    const establecimientos = [...new Set(datosColegios.map(d => d.rbd_est))].sort((a, b) => a.localeCompare(b, 'es'));
 
     // Agrupar matrícula y asistencia ponderada por establecimiento y mes (colapsa ensenanza/nivel/letra)
     const agrup = {};
@@ -968,29 +1030,28 @@ function renderAnalisisColegios(datosFiltrados) {
         agrup[est] = {};
         meses.forEach(mes => { agrup[est][mes] = { matSum: 0, asisSum: 0 }; });
     });
-    datosFiltrados.forEach(d => {
+    datosColegios.forEach(d => {
         const celda = agrup[d.rbd_est] && agrup[d.rbd_est][d.mes];
         if (!celda) return;
         celda.matSum += d.matricula;
         if (d.asistencia > 0) celda.asisSum += (d.asistencia * d.matricula);
     });
 
-    // --- Gráficos spaghetti (una línea por establecimiento) ---
-    const dataAsisChart = { labels: meses, datasets: [] };
-    const dataMatChart = { labels: meses, datasets: [] };
+    ACC_COLEGIOS = { meses, establecimientos, agrup };
 
-    establecimientos.forEach((est, idx) => {
-        const color = colorEstablecimiento(idx);
-        const serieAsis = meses.map(mes => { const c = agrup[est][mes]; return c.matSum > 0 ? c.asisSum / c.matSum : null; });
-        const serieMat = meses.map(mes => { const c = agrup[est][mes]; return c.matSum > 0 ? c.matSum : null; });
-        const baseDataset = { label: est, borderColor: color, backgroundColor: 'transparent', borderWidth: 1.4, pointRadius: 0, pointHoverRadius: 4, tension: 0.15, fill: false, spanGaps: true };
-        dataAsisChart.datasets.push({ ...baseDataset, data: serieAsis });
-        dataMatChart.datasets.push({ ...baseDataset, data: serieMat });
-    });
+    // Refleja en los subtítulos qué año se está mostrando, ya que esta pestaña ignora
+    // el filtro de año superior y siempre usa el más reciente.
+    const sufijoAnio = agnoRecienteColegios ? ` · Año ${agnoRecienteColegios}` : '';
+    const setDescColegios = (id, base) => { const el = document.getElementById(id); if (el) el.innerText = base + sufijoAnio; };
+    setDescColegios('colegios-desc-asis-chart', 'Una línea por establecimiento (RBD)');
+    setDescColegios('colegios-desc-mat-chart', 'Una línea por establecimiento (RBD)');
+    setDescColegios('colegios-desc-asis-tabla', 'Detalle mensual y acumulado anual ponderado (Suma Asistencia×Matrícula / Suma Matrícula)');
+    setDescColegios('colegios-desc-mat-tabla', 'Detalle mensual y promedio anual');
 
-    if (charts['colegios-asis']) actualizarGrafico(charts['colegios-asis'], dataAsisChart);
-    if (charts['colegios-mat']) actualizarGrafico(charts['colegios-mat'], dataMatChart);
+    const btnTodos = document.getElementById('btn-todos-colegios');
+    if (btnTodos) btnTodos.innerText = `Seleccionar todos (${establecimientos.length})`;
 
+    // Las tablas siempre muestran TODOS los establecimientos (no dependen del selector de los gráficos)
     // --- Tabla A: Asistencia mensual + Acumulado Anual (ponderado) ---
     let htmlAsis = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Acumulado Anual</th></tr></thead><tbody>';
     establecimientos.forEach(est => {
@@ -1023,7 +1084,121 @@ function renderAnalisisColegios(datosFiltrados) {
     });
     htmlMat += '</tbody></table>';
     wrapMat.innerHTML = htmlMat;
+
+    // Los gráficos dependen de la selección del usuario, no de "todos" los establecimientos
+    renderChipsColegios();
+    redibujarGraficosColegios();
 }
+
+// Normaliza texto para búsqueda insensible a tildes/mayúsculas
+function normalizarTexto(s) {
+    return s.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function filtrarSugerenciasColegios() {
+    const input = document.getElementById('buscador-colegios');
+    const cont = document.getElementById('sugerencias-colegios');
+    if (!input || !cont) return;
+    const q = input.value.trim();
+    if (!q) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
+
+    const qn = normalizarTexto(q);
+    const candidatos = ACC_COLEGIOS.establecimientos
+        .filter(est => !colegiosSeleccionados.has(est) && normalizarTexto(est).includes(qn))
+        .slice(0, 8);
+
+    if (candidatos.length === 0) {
+        cont.innerHTML = '<div class="sugerencia-vacia">Sin coincidencias</div>';
+    } else {
+        cont.innerHTML = candidatos.map(est =>
+            `<div class="sugerencia-item" onclick="agregarColegio(this.dataset.est)" data-est="${est.replace(/"/g, '&quot;')}">${est}</div>`
+        ).join('');
+    }
+    cont.style.display = 'block';
+}
+
+function agregarColegio(est) {
+    colegiosSeleccionados.add(est);
+    const input = document.getElementById('buscador-colegios');
+    if (input) input.value = '';
+    const cont = document.getElementById('sugerencias-colegios');
+    if (cont) { cont.style.display = 'none'; cont.innerHTML = ''; }
+    renderChipsColegios();
+    redibujarGraficosColegios();
+}
+
+function quitarColegio(est) {
+    colegiosSeleccionados.delete(est);
+    renderChipsColegios();
+    redibujarGraficosColegios();
+}
+
+function limpiarSeleccionColegios() {
+    colegiosSeleccionados.clear();
+    renderChipsColegios();
+    redibujarGraficosColegios();
+}
+
+function seleccionarTodosColegios() {
+    ACC_COLEGIOS.establecimientos.forEach(est => colegiosSeleccionados.add(est));
+    renderChipsColegios();
+    redibujarGraficosColegios();
+}
+
+function renderChipsColegios() {
+    const cont = document.getElementById('chips-colegios');
+    if (!cont) return;
+    if (colegiosSeleccionados.size === 0) {
+        cont.innerHTML = '<span class="chips-vacio">Ningún establecimiento seleccionado.</span>';
+        return;
+    }
+    const ordenados = [...colegiosSeleccionados].sort((a, b) => a.localeCompare(b, 'es'));
+    cont.innerHTML = ordenados.map(est => {
+        const color = colorEstablecimientoPorNombre(est);
+        const estAttr = est.replace(/"/g, '&quot;');
+        return `<button type="button" class="chip-colegio" style="border-color:${color}" data-est="${estAttr}" onclick="quitarColegio(this.dataset.est)" title="Quitar ${estAttr}"><span class="chip-dot" style="background:${color}"></span>${est}<span class="chip-x" aria-hidden="true">×</span></button>`;
+    }).join('');
+}
+
+function redibujarGraficosColegios() {
+    const { meses, agrup } = ACC_COLEGIOS;
+    const seleccion = [...colegiosSeleccionados].sort((a, b) => a.localeCompare(b, 'es'));
+    const suficientes = seleccion.length >= 2;
+
+    ['chart-colegios-asis', 'chart-colegios-mat'].forEach(id => {
+        const canvas = document.getElementById(id);
+        const vacio = document.getElementById(id + '-empty');
+        if (canvas) canvas.style.display = suficientes ? 'block' : 'none';
+        if (vacio) vacio.style.display = suficientes ? 'none' : 'flex';
+    });
+
+    if (!suficientes) return;
+
+    const dataAsisChart = { labels: meses, datasets: [] };
+    const dataMatChart = { labels: meses, datasets: [] };
+
+    seleccion.forEach(est => {
+        const color = colorEstablecimientoPorNombre(est);
+        const celdas = agrup[est] || {};
+        const serieAsis = meses.map(mes => { const c = celdas[mes]; return c && c.matSum > 0 ? c.asisSum / c.matSum : null; });
+        const serieMat = meses.map(mes => { const c = celdas[mes]; return c && c.matSum > 0 ? c.matSum : null; });
+        const baseDataset = { label: est, borderColor: color, backgroundColor: 'transparent', borderWidth: 2, hoverBorderWidth: 3.5, hoverBorderColor: color, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 6, tension: 0.15, fill: false, spanGaps: true };
+        dataAsisChart.datasets.push({ ...baseDataset, data: serieAsis });
+        dataMatChart.datasets.push({ ...baseDataset, data: serieMat });
+    });
+
+    if (charts['colegios-asis']) actualizarGrafico(charts['colegios-asis'], dataAsisChart);
+    if (charts['colegios-mat']) actualizarGrafico(charts['colegios-mat'], dataMatChart);
+}
+
+// Cerrar el dropdown de sugerencias al hacer clic fuera del buscador
+document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.buscador-colegios-wrap');
+    const cont = document.getElementById('sugerencias-colegios');
+    if (wrap && cont && !wrap.contains(e.target)) {
+        cont.style.display = 'none';
+    }
+});
 
 // --- CONFIGURACIÓN UI Y CHART.JS ---
 function toggleTheme() {
@@ -1062,14 +1237,14 @@ function initCharts() {
   const getOptBarMat = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw !== null ? c.raw.toLocaleString('es-CL') : '—'}` } } } });
   const getOptLineColegios = (esPorcentaje) => ({
     responsive: true, maintainAspectRatio: false,
-    interaction: { mode: 'nearest', intersect: true },
+    interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
     scales: {
       y: esPorcentaje
         ? { min: 0, max: 1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } }
         : { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } }
     },
     plugins: {
-      legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } },
+      legend: { display: false },
       tooltip: { callbacks: { label: c => `${c.dataset.label}: ${esPorcentaje ? (c.raw * 100).toFixed(1) + '%' : c.raw.toLocaleString('es-CL')}` } }
     }
   });
