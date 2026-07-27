@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Asistencia y Matrícula · SLEP Del Pino</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* TEMA CLARO */
+    :root {
+      --bg:         #f6f8fa; --surface:    #ffffff; --surface-2:  #f3f4f6;
+      --border:     #d0d7de; --border-2:   #afb8c1; --text:       #24292f;
+      --text-muted: #57606a; --leng:       #0284c7; --mate:       #ea580c;
+      --total:      #1a7f37; --purple:     #8250df; --red:        #cf222e; --r: 12px;
+      --font:       'Archivo', sans-serif; --mono:       'JetBrains Mono', monospace;
+    }
+
+    /* TEMA OSCURO */
+    body.dark-theme {
+      --bg:         #0d1117; --surface:    #161b22; --surface-2:  #21262d;
+      --border:     #30363d; --border-2:   #3d444d; --text:       #e6edf3;
+      --text-muted: #7d8590; --leng:       #38bdf8; --mate:       #fb923c;
+      --total:      #34d399; --purple:     #a78bfa; --red:        #f87171;
+    }
+
+    html { font-size: 16px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; min-height: 100vh; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+
+    /* LOGIN */
+    #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 2.5rem; width: 100%; max-width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); text-align: center; }
+    body.dark-theme .login-card { box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .login-card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text); }
+    .login-card p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem; }
+    .input-group { text-align: left; margin-bottom: 1.2rem; }
+    .input-group label { display: block; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+    .input-group input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; color: var(--text); font-family: var(--font); outline: none; transition: 0.2s; }
+    .input-group input:focus { border-color: var(--leng); box-shadow: 0 0 0 2px rgba(56,189,248,0.1); }
+    .btn-login { width: 100%; background: var(--leng); color: #ffffff; border: none; border-radius: 8px; padding: 0.9rem; font-weight: 800; cursor: pointer; transition: 0.2s; margin-top: 1rem; }
+    body.dark-theme .btn-login { color: var(--bg); }
+    .btn-login:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    #login-error { color: var(--red); font-size: 0.8rem; margin-top: 1rem; display: none; font-weight: 600; }
+    .loader { border: 4px solid var(--surface-2); border-top: 4px solid var(--leng); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 1rem auto; display: none; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* NAVBAR & FILTROS */
+    .sticky-top-section { position: sticky; top: 0; z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    body.dark-theme .sticky-top-section { box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    .header { padding: 1rem 2rem 0.5rem 2rem; display: block; }
+    .header::after { content: ""; display: table; clear: both; }
+    .header-info { float: left; display: flex; align-items: center; gap: 1rem; }
+    .filter-bar { padding: 0.5rem 2rem 0.8rem 2rem; display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; }
+    .filter-bar .filter-group { position: relative; transition: opacity 0.3s; }
+    .filter-group::before { content: attr(data-label); position: absolute; left: 0; top: 8px; font-size: 0.85rem; font-weight: 800; color: var(--text-muted); pointer-events: none; transition: opacity 0.2s, color 0.2s; z-index: 10; letter-spacing: 0.05em; }
+    .filter-group:hover::before { color: var(--text); }
+    .filter-group:focus-within::before { opacity: 0; }
+    .btn-clear-text { background: transparent; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 800; cursor: pointer; margin-left: auto; text-transform: uppercase; }
+
+    .active-filters-tray { display: block; padding-top: 0.4rem; float: right; }
+    .filter-group-tag { display: inline-flex; align-items: center; margin: 0 0.5rem 0.5rem 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .filter-group-label { padding: 4px 8px; font-size: 0.65rem; font-weight: 800; color: var(--leng); background: rgba(56,189,248,0.05); border-right: 1px solid var(--border); cursor: pointer; }
+    .filter-value-tag { padding: 4px 10px; font-size: 0.75rem; color: var(--text); cursor: pointer; display: flex; align-items: center; border-right: 1px solid var(--border); }
+    .filter-value-tag:hover { text-decoration: line-through; color: var(--red); }
+    .filter-value-tag:last-child, .filter-group-tag .filter-value-tag:last-of-type { border-right: none; }
+
+    /* TABS */
+    .tabs-nav { position: relative; background: var(--bg); padding: 0 2rem; display: flex; justify-content: center; gap: 3rem; border-bottom: 1px solid var(--border); }
+    .tab-btn { background: transparent; border: none; color: var(--text-muted); font-family: var(--font); font-size: 0.85rem; font-weight: 700; padding: 1rem 0; cursor: pointer; position: relative; text-transform: uppercase; letter-spacing: 0.05em; transition: 0.2s; }
+    .tab-btn.active { color: var(--leng); }
+    .tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--leng); }
+    .theme-toggle-wrapper { position: absolute; left: 2rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.8rem; }
+    .slep-toggle-wrapper { position: absolute; right: 2rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.8rem; }
+    .theme-toggle-label, .slep-toggle-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    /* SWITCH (TOGGLE) */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--surface-2); border: 1px solid var(--border); transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-muted); transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: rgba(56, 189, 248, 0.15); border-color: var(--leng); }
+    input:checked + .slider:before { transform: translateX(20px); background-color: var(--leng); }
+
+    /* SELECTORES */
+    .ts-wrapper.multi .ts-control { background: transparent !important; border: none !important; border-bottom: 1px solid transparent !important; padding: 6px 0 !important; height: 34px !important; box-shadow: none !important; cursor: pointer !important; overflow: hidden; }
+    .ts-wrapper.multi.focus .ts-control { border-bottom: 1px solid var(--leng) !important; }
+    .ts-wrapper.multi .ts-control > div.item { display: none !important; }
+    .ts-control input { color: var(--text) !important; font-size: 0.85rem; }
+    .ts-wrapper.multi:not(.focus) .ts-control input::placeholder { color: transparent !important; }
+    .ts-dropdown { background: var(--surface-2) !important; border: 1px solid var(--border) !important; color: var(--text) !important; z-index: 2000; }
+
+    /* CONTENIDO PRINCIPAL */
+    .main { max-width: 1560px; margin: 0 auto; padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+    
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .kpi-grid-compact { grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); justify-content: start; }
+    .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.25rem; position: relative; }
+    .kpi::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--kpi-c); opacity: 0.5; }
+    .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .kpi-val { font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--kpi-c); }
+    .kpi-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    .tabla-cob { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .tabla-cob th { text-align: left; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .tabla-cob td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .tabla-cob tr.fila-est { cursor: pointer; }
+    .tabla-cob tr.fila-est:hover { background: var(--surface-2); }
+    .tabla-cob tr.fila-curso td { background: var(--surface-2); font-size: 0.8rem; color: var(--text-muted); }
+    .tabla-cob tr.fila-curso.oculto { display: none; }
+    .tabla-cob .chevron { display: inline-block; transition: transform 0.2s; margin-right: 0.5rem; color: var(--text-muted); }
+    .tabla-cob tr.fila-est.abierta .chevron { transform: rotate(90deg); }
+    .badge-cob { font-family: var(--mono); font-weight: 700; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
+    .variacion-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 0.5rem 0 0.25rem 0; }
+    .variacion-item .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .variacion-item .kpi-val { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; }
+
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .chart-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem 1.4rem; min-height: 400px; display: flex; flex-direction: column; }
+    .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.1rem; }
+    .chart-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+    .chart-title span { color: var(--text); font-size: 0.85rem; display: block; margin-top: 0.15rem; text-transform: none; }
+    .chart-wrap { position: relative; flex: 1; min-height: 0; }
+    .full-width { grid-column: 1 / -1; }
+
+    .btn-download { position: absolute; top: 1.25rem; right: 1.4rem; background: transparent; border: none; color: var(--text-muted); width: 20px; height: 20px; cursor: pointer; opacity: 0; transition: 0.3s; z-index: 50; padding: 0; }
+    .btn-download:hover { color: var(--leng); transform: scale(1.1); }
+    .chart-card:hover .btn-download { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-card">
+    <h2>Portal de Asistencia y Matrícula</h2>
+    <p>Ingresa tus credenciales institucionales.</p>
+    <div class="input-group">
+      <label>USUARIO</label>
+      <input type="text" id="login-user" placeholder="RBD">
+    </div>
+    <div class="input-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••">
+    </div>
+    <button class="btn-login" onclick="handleLogin()">Acceder a la Base</button>
+    <div class="loader" id="login-loader"></div>
+    <div id="login-error">Credenciales incorrectas o error de conexión.</div>
+  </div>
+</div>
+
+<div class="sticky-top-section" id="navbar" style="display:none;">
+  <header class="header">
+    <div class="header-info">
+      <div>
+        <div style="font-size: 1.1rem; font-weight: 800;">Panel de Asistencia y Matrícula</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Servicio de Educación Pública Del Pino</div>
+      </div>
+    </div>
+    <div id="active-filters-tray" class="active-filters-tray" style="display: none;"></div>
+  </header>
+
+  <div class="filter-bar">
+    <div class="filter-group" style="flex: 0.6;" data-label="AÑO ▾"><select id="f-agno" multiple placeholder="Año..."></select></div>
+    <div class="filter-group" style="flex: 0.8;" data-label="MES ▾"><select id="f-mes" multiple placeholder="Mes..."></select></div>
+    <div class="filter-group" style="flex: 1.2;" data-label="ENSEÑANZA ▾"><select id="f-ensenanza" multiple placeholder="Enseñanza..."></select></div>
+    <div class="filter-group" style="flex: 1.2;" data-label="NIVEL ▾"><select id="f-nivel" multiple placeholder="Nivel..."></select></div>
+    <div class="filter-group" style="flex: 0.8;" data-label="LETRA ▾"><select id="f-letra" multiple placeholder="Letra..."></select></div>
+    
+    <div class="filter-group" id="group-rbd" style="flex: 2.5;" data-label="ESTABLECIMIENTO ▾">
+      <select id="f-rbd" multiple placeholder="Buscar unidad educativa..."></select>
+    </div>
+    
+    <div id="static-rbd-container" class="filter-group" style="display:none; flex: 2.5;">
+      <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid var(--leng); border-radius: 8px; padding: 0 12px; height: 34px; display: flex; align-items: center; overflow: hidden;">
+        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); margin-right: 8px; letter-spacing: 0.05em;">ESTABLECIMIENTO:</span>
+        <span id="static-rbd-text" style="font-size: 0.85rem; font-weight: 700; color: var(--leng); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+      </div>
+    </div>
+    
+    <button class="btn-clear-text" id="btn-clear">Limpiar Filtros</button>
+  </div>
+
+  <nav class="tabs-nav">
+    <div class="theme-toggle-wrapper">
+      <span class="theme-toggle-label" id="theme-label-text">Tema Claro</span>
+      <label class="switch">
+        <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <button class="tab-btn active" onclick="showTab('tab-general', event)">Panorama General</button>
+    <button class="tab-btn" onclick="showTab('tab-niveles', event)">Análisis por Niveles</button>
+    <button class="tab-btn" onclick="showTab('tab-retencion', event)">Matrícula y Cobertura</button>
+    
+    <div class="slep-toggle-wrapper">
+      <span class="slep-toggle-label" id="slep-label-text">PROMEDIO SLEP</span>
+      <label class="switch">
+        <input type="checkbox" id="slep-toggle" onchange="toggleSlep()">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </nav>
+</div>
+
+<main class="main" id="dashboard" style="display:none;">
+  
+  <div id="tab-general" class="tab-content">
+    <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+      <div class="kpi" style="--kpi-c: var(--leng)">
+        <div class="kpi-label">Asistencia Ponderada</div>
+        <div class="kpi-val" id="kpi-asistencia">—</div>
+        <div class="kpi-desc">Promedio exacto s/matrícula</div>
+      </div>
+      <div class="kpi" style="--kpi-c: var(--mate)">
+        <div class="kpi-label">Matrícula Activa</div>
+        <div class="kpi-val" id="kpi-matricula">—</div>
+        <div class="kpi-desc" id="kpi-matricula-desc">Último mes seleccionado</div>
+      </div>
+      <div class="kpi" style="--kpi-c: var(--purple)">
+        <div class="kpi-label">Establecimientos</div>
+        <div class="kpi-val" id="kpi-establecimientos">—</div>
+        <div class="kpi-desc">Con registro en el periodo</div>
+      </div>
+      <div class="kpi" style="--kpi-c: var(--total)">
+        <div class="kpi-label">Aulas / Cursos</div>
+        <div class="kpi-val" id="kpi-cursos">—</div>
+        <div class="kpi-desc">Bajo filtros actuales</div>
+      </div>
+    </div>
+    
+    <div class="charts-grid">
+      <div class="chart-card full-width">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Evolución Histórica<span>Asistencia Promedio (Mes a Mes) - Escala Ajustada (60% - 100%)</span></div></div>
+        <div class="chart-wrap" style="height: 350px;"><canvas id="chart-asis-evo"></canvas></div>
+      </div>
+
+      <div class="chart-card full-width">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Variación Interanual de Asistencia<span>Diferencia en Puntos Porcentuales respecto al Año Anterior (Umbral 0%)</span></div></div>
+        <div class="chart-wrap" style="height: 280px;"><canvas id="chart-asis-var"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-niveles" class="tab-content" style="display:none;">
+    <div class="charts-grid">
+      <div class="chart-card">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Brechas por Etapa<span>Asistencia por Tipo de Enseñanza</span></div></div>
+        <div class="chart-wrap"><canvas id="chart-asis-ensenanza"></canvas></div>
+      </div>
+      
+      <div class="chart-card">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Desglose Específico<span>Asistencia por Nivel Educativo</span></div></div>
+        <div class="chart-wrap"><canvas id="chart-asis-nivel"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-retencion" class="tab-content" style="display:none;">
+    <div class="charts-grid" style="margin-bottom: 1.5rem;">
+      <div class="chart-card full-width">
+        <div class="chart-header"><div class="chart-title">Variación de Matrícula del Año<span>Primer vs. último mes con datos del año más reciente</span></div></div>
+        <div id="variacion-anual-wrap"></div>
+      </div>
+    </div>
+    <div class="kpi-grid kpi-grid-compact" style="margin-bottom: 1.5rem;">
+      <div class="kpi" style="--kpi-c: var(--leng)">
+        <div class="kpi-label">Cupos 2026</div>
+        <div class="kpi-val" id="kpi-cupos">—</div>
+        <div class="kpi-desc" id="kpi-cupos-desc">Total disponible</div>
+      </div>
+      <div class="kpi" style="--kpi-c: var(--purple)">
+        <div class="kpi-label">Cobertura</div>
+        <div class="kpi-val" id="kpi-cobertura">—</div>
+        <div class="kpi-desc">Matrícula − Cupos 2026</div>
+      </div>
+      <div class="kpi" style="--kpi-c: var(--total)">
+        <div class="kpi-label">% Cobertura Promedio</div>
+        <div class="kpi-val" id="kpi-pct-cobertura">—</div>
+        <div class="kpi-desc">Matrícula / Cupos 2026</div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card full-width">
+        <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span id="tabla-cobertura-desc">Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)</span></div></div>
+        <div id="tabla-cobertura-wrap"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// --- CONFIGURACIÓN Y DICCIONARIOS DE ORDENAMIENTO ESTRICTO ---
+const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx2wv9TroK9XDnSw6J5G8LJAw11SeHS370_qI_vgzKeVeEO68NOSuMyQ-k2ww3-ns2XVC7JyrKBkbZ/pub?gid=45523755&single=true&output=csv';
+
+const ORDEN_MESES = ['1','2','3','4','5','6','7','8','9','10','11','12','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Los meses llegan de la planilla con formato "N.NombreMes" (ej. "4.Junio").
+// Se extrae el número inicial para un orden cronológico robusto, sin depender
+// del orden en que aparecen las filas en la base. Si no calza el patrón, se
+// usa ORDEN_MESES como respaldo.
+function ordenMes(mesStr) {
+  if (!mesStr) return 999;
+  const m = mesStr.toString().trim().match(/^(\d+)/);
+  if (m) return parseInt(m[1], 10);
+  const idx = ORDEN_MESES.indexOf(mesStr);
+  return idx === -1 ? 999 : idx;
+}
+const ORDEN_ENSENANZA = ['Educación Parvularia', 'Enseñanza Básica', 'Enseñanza Media', 'Educación de Adultos', 'Educación Especial'];
+const ORDEN_NIVEL = ['Sala Cuna', 'Medio Menor', 'Medio Mayor', '1er Nivel de Transición', '2do Nivel de Transición', '1° básico', '2° básico', '3° básico', '4° básico', '5° básico', '6° básico', '7° básico', '8° básico', '1° medio', '2° medio', '3° medio', '4° medio'];
+
+let DB_RAW = [];
+let ts = {};
+let charts = {};
+let IS_ADMIN = false;
+let SESSION_RBD = null;
+let SHOW_SLEP = false;
+
+const V = { AGNO: 'agno', MES: 'mes', RBD: 'rbd', EST: 'establecimiento', ENS: 'enseñanza', NIV: 'nivel', LET: 'letra', ASIS: '%Asistencia', MAT: 'Matrícula' };
+
+// --- FUNCIÓN INTELIGENTE PARA LEER COLUMNAS SIN IMPORTAR TILDES O MAYÚSCULAS ---
+function encontrarValorColumna(fila, opcionesClave) {
+    const nombresColumnas = Object.keys(fila);
+    for (let claveBusqueda of opcionesClave) {
+        let claveLimpiaBusqueda = claveBusqueda.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        let encontrada = nombresColumnas.find(k => 
+            k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === claveLimpiaBusqueda
+        );
+        if (encontrada !== undefined && fila[encontrada] !== undefined && fila[encontrada] !== null) {
+            return fila[encontrada];
+        }
+    }
+    return "";
+}
+
+// --- MOTOR DE ARRANQUE Y LOGIN ---
+function handleLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value.trim();
+  const errorEl = document.getElementById('login-error');
+  const loader = document.getElementById('login-loader');
+  
+  errorEl.style.display = 'none';
+  
+  let valid = false;
+  if (user === 'admin' && pass === 'slep2026') valid = true;
+  else {
+    const rbdNum = parseInt(user, 10);
+    if (!isNaN(rbdNum) && pass === String((rbdNum * 2) + 30)) valid = true;
+  }
+
+  if (!valid) {
+    errorEl.innerText = "Credenciales incorrectas.";
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  loader.style.display = 'block';
+  Papa.parse(GOOGLE_SHEETS_CSV_URL, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      if (results.data && results.data.length > 0) {
+        try {
+          procesarDatos(results.data, user);
+        } catch (e) {
+          console.error("Error procesando datos:", e);
+          loader.style.display = 'none';
+          errorEl.innerText = "Error procesando los datos: " + e.message;
+          errorEl.style.display = 'block';
+        }
+      } else {
+        loader.style.display = 'none';
+        errorEl.innerText = "La base de datos está vacía.";
+        errorEl.style.display = 'block';
+      }
+    },
+    error: function(err) {
+      loader.style.display = 'none';
+      errorEl.innerText = "Error de conexión con Google Sheets.";
+      errorEl.style.display = 'block';
+    }
+  });
+}
+
+function procesarDatos(rawData, user) {
+  DB_RAW = rawData.map(row => {
+    let asisRaw = encontrarValorColumna(row, ['%asistencia', 'asistencia', 'porc_de_asistencia']);
+    let matRaw = encontrarValorColumna(row, ['matricula', 'matricula_cierre_mes']);
+    let rbdEstRaw = encontrarValorColumna(row, ['rbd_establecimiento', 'establecimiento']);
+    let rbdRaw = encontrarValorColumna(row, ['rbd']);
+    
+    if (!rbdRaw && rbdEstRaw) {
+        let match = rbdEstRaw.toString().match(/^(\d+)/);
+        if (match) rbdRaw = match[1];
+    }
+    if (!rbdEstRaw && rbdRaw) rbdEstRaw = rbdRaw;
+
+    let asisStr = (asisRaw || "0").toString().replace('%','').replace(',','.');
+    let asistencia = parseFloat(asisStr);
+    if (asistencia > 1 && asistencia <= 100) asistencia = asistencia / 100;
+
+    let matricula = parseInt((matRaw || "0").toString().replace(/\./g,''), 10) || 0; 
+
+    let cuposRaw = encontrarValorColumna(row, ['cupos_2026', 'cupos 2026', 'cupos2026']);
+    let cupos2026 = null;
+    if (cuposRaw !== "" && cuposRaw !== undefined && cuposRaw !== null) {
+      let nCupos = parseInt(cuposRaw.toString().replace(/\./g,''), 10);
+      cupos2026 = isNaN(nCupos) ? null : nCupos;
+    }
+
+    return {
+      agno: (encontrarValorColumna(row, ['agno', 'año', 'year']) || "").toString().trim(),
+      mes: (encontrarValorColumna(row, ['mes', 'month']) || "").toString().trim(),
+      rbd_est: rbdEstRaw.toString().trim(),
+      rbd_puro: rbdRaw.toString().trim(),
+      ensenanza: (encontrarValorColumna(row, ['enseñanza', 'ensenanza']) || "").toString().trim(),
+      nivel: (encontrarValorColumna(row, ['nivel']) || "").toString().trim(),
+      letra: (encontrarValorColumna(row, ['letra']) || "").toString().trim(),
+      asistencia: isNaN(asistencia) ? 0 : asistencia,
+      matricula: matricula,
+      cupos2026: cupos2026
+    };
+  }).filter(d => d.agno !== "" && d.matricula > 0);
+
+  if (user === 'admin') {
+    IS_ADMIN = true;
+  } else {
+    IS_ADMIN = false;
+    SESSION_RBD = user;
+    if (!DB_RAW.some(d => d.rbd_puro === SESSION_RBD)) {
+        document.getElementById('login-loader').style.display = 'none';
+        const errorEl = document.getElementById('login-error');
+        errorEl.innerText = "El RBD ingresado no tiene datos en el sistema.";
+        errorEl.style.display = 'block';
+        return;
+    }
+  }
+  iniciarInterfaz();
+}
+
+function iniciarInterfaz() {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('navbar').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'block';
+
+  configurarFiltros();
+  initCharts();
+  
+  if (!IS_ADMIN && SESSION_RBD) {
+    const dataColegio = DB_RAW.find(d => d.rbd_puro === SESSION_RBD);
+    if(dataColegio) {
+        ts['rbd_est'].setValue([dataColegio.rbd_est]);
+        document.getElementById('group-rbd').style.display = 'none';
+        document.getElementById('static-rbd-container').style.display = 'block';
+        document.getElementById('static-rbd-text').innerText = dataColegio.rbd_est;
+    }
+  }
+  actualizarDashboard();
+}
+
+function configurarFiltros() {
+  const mapeo = { agno: 'f-agno', mes: 'f-mes', ensenanza: 'f-ensenanza', nivel: 'f-nivel', letra: 'f-letra', rbd_est: 'f-rbd' };
+  
+  Object.keys(mapeo).forEach(key => {
+    let valoresUnicos = [...new Set(DB_RAW.map(d => d[key]))].filter(Boolean);
+    
+    valoresUnicos.sort((a, b) => {
+      if (key === 'mes') {
+        let ia = ORDEN_MESES.indexOf(a), ib = ORDEN_MESES.indexOf(b);
+        return (ia !== -1 ? ia : 99) - (ib !== -1 ? ib : 99);
+      }
+      if (key === 'ensenanza') {
+        let ia = ORDEN_ENSENANZA.indexOf(a), ib = ORDEN_ENSENANZA.indexOf(b);
+        return (ia !== -1 ? ia : 99) - (ib !== -1 ? ib : 99);
+      }
+      if (key === 'nivel') {
+        let ia = ORDEN_NIVEL.indexOf(a), ib = ORDEN_NIVEL.indexOf(b);
+        return (ia !== -1 ? ia : 99) - (ib !== -1 ? ib : 99);
+      }
+      return a.localeCompare(b, 'es', {numeric: true});
+    });
+
+    ts[key] = new TomSelect(`#${mapeo[key]}`, {
+      plugins: ['checkbox_options'],
+      maxOptions: null,
+      maxItems: null, 
+      closeAfterSelect: false,
+      valueField: 'id',
+      labelField: 'title',
+      searchField: 'title',
+      options: valoresUnicos.map(v => ({ id: v, title: v })),
+      onChange: () => actualizarDashboard()
+    });
+  });
+
+  document.getElementById('btn-clear').onclick = () => { 
+    Object.keys(ts).forEach(k => {
+      if (!IS_ADMIN && k === 'rbd_est') return; 
+      ts[k].setValue([], true);
+    });
+    actualizarDashboard();
+  };
+}
+
+function renderActiveFiltersTray() {
+  const tray = document.getElementById('active-filters-tray');
+  if (!tray) return;
+  tray.innerHTML = '';
+  let hasFilters = false;
+  const etiquetas = { agno: 'AÑO', mes: 'MES', ensenanza: 'ENSEÑANZA', nivel: 'NIVEL', letra: 'LETRA', rbd_est: 'ESTABLECIMIENTO' };
+
+  Object.keys(ts).forEach(key => {
+    if (!IS_ADMIN && key === 'rbd_est') return;
+    const selected = ts[key].getValue();
+    if (!selected || selected.length === 0) return;
+    hasFilters = true;
+
+    const group = document.createElement('div');
+    group.className = 'filter-group-tag';
+
+    const label = document.createElement('span');
+    label.className = 'filter-group-label';
+    label.innerText = etiquetas[key] || key.toUpperCase();
+    label.onclick = () => { ts[key].setValue([], true); actualizarDashboard(); };
+    group.appendChild(label);
+
+    selected.forEach(val => {
+      const opt = ts[key].options[val];
+      const tag = document.createElement('span');
+      tag.className = 'filter-value-tag';
+      tag.innerText = opt ? opt.title : val;
+      tag.onclick = () => { ts[key].removeItem(val); };
+      group.appendChild(tag);
+    });
+
+    tray.appendChild(group);
+  });
+
+  tray.style.display = hasFilters ? 'block' : 'none';
+}
+
+function colorCobertura(pct) {
+  if (pct === null) return 'var(--text-muted)';
+  if (pct >= 100) return 'var(--red)';
+  if (pct >= 85) return 'var(--total)';
+  return 'var(--text-muted)';
+}
+
+function toggleFilaCobertura(idx) {
+  document.querySelectorAll('.fila-curso-' + idx).forEach(tr => tr.classList.toggle('oculto'));
+  document.getElementById('fila-est-' + idx).classList.toggle('abierta');
+}
+
+function renderTablaCobertura(datosFiltrados) {
+  const wrap = document.getElementById('tabla-cobertura-wrap');
+  if (!wrap) return;
+
+  const datosCob = datosFiltrados.filter(d => d.cupos2026 !== null);
+
+  // Rótulo dinámico: mes/año más reciente que efectivamente trae datos de cupos,
+  // para no dejar "Junio" fijo cuando la planilla sume meses nuevos con cupos.
+  let cupoLabel = '';
+  if (datosCob.length > 0) {
+    const agnoCobReciente = [...new Set(datosCob.map(d => d.agno))].sort((a, b) => Number(b) - Number(a))[0];
+    const mesCobReciente = [...new Set(datosCob.filter(d => d.agno === agnoCobReciente).map(d => d.mes))]
+      .sort((a, b) => ordenMes(b) - ordenMes(a))[0];
+    cupoLabel = `${mesCobReciente} ${agnoCobReciente}`;
+  }
+  const cuposDescEl = document.getElementById('kpi-cupos-desc');
+  if (cuposDescEl) cuposDescEl.innerText = cupoLabel ? `Total disponible (${cupoLabel})` : 'Total disponible';
+  const tablaCobDescEl = document.getElementById('tabla-cobertura-desc');
+  if (tablaCobDescEl) tablaCobDescEl.innerText = (cupoLabel ? cupoLabel + ' · ' : '') + 'Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)';
+
+  let totalMat = 0, totalCupos = 0;
+  const porEst = {};
+  datosCob.forEach(d => {
+    totalMat += d.matricula; totalCupos += d.cupos2026;
+    if (!porEst[d.rbd_est]) porEst[d.rbd_est] = { matricula: 0, cupos: 0, cursos: {} };
+    porEst[d.rbd_est].matricula += d.matricula;
+    porEst[d.rbd_est].cupos += d.cupos2026;
+    const cKey = `${d.nivel} ${d.letra}`.trim();
+    if (!porEst[d.rbd_est].cursos[cKey]) porEst[d.rbd_est].cursos[cKey] = { matricula: 0, cupos: 0 };
+    porEst[d.rbd_est].cursos[cKey].matricula += d.matricula;
+    porEst[d.rbd_est].cursos[cKey].cupos += d.cupos2026;
+  });
+
+  document.getElementById('kpi-cupos').innerText = totalCupos > 0 ? totalCupos.toLocaleString('es-CL') : '—';
+  const cobTotal = totalMat - totalCupos;
+  document.getElementById('kpi-cobertura').innerText = totalCupos > 0 ? (cobTotal >= 0 ? '+' : '') + cobTotal.toLocaleString('es-CL') : '—';
+  document.getElementById('kpi-pct-cobertura').innerText = totalCupos > 0 ? (totalMat / totalCupos * 100).toFixed(1) + '%' : '—';
+
+  if (Object.keys(porEst).length === 0) {
+    wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos de cobertura para los filtros actuales (esta información solo existe para el mes más reciente con cupos cargados).</p>';
+    return;
+  }
+
+  const establecimientos = Object.keys(porEst).sort((a, b) => {
+    const pa = porEst[a].cupos > 0 ? porEst[a].matricula / porEst[a].cupos : 0;
+    const pb = porEst[b].cupos > 0 ? porEst[b].matricula / porEst[b].cupos : 0;
+    return pb - pa;
+  });
+
+  let html = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th><th>Matrícula</th><th>Cupos 2026</th><th>Cobertura</th><th>% Cobertura</th></tr></thead><tbody>';
+
+  establecimientos.forEach((est, idx) => {
+    const e = porEst[est];
+    const pct = e.cupos > 0 ? (e.matricula / e.cupos * 100) : null;
+    const cob = e.matricula - e.cupos;
+    const color = colorCobertura(pct);
+    html += `<tr class="fila-est" id="fila-est-${idx}" onclick="toggleFilaCobertura(${idx})">
+      <td><span class="chevron">▶</span>${est}</td>
+      <td>${e.matricula.toLocaleString('es-CL')}</td>
+      <td>${e.cupos.toLocaleString('es-CL')}</td>
+      <td>${cob >= 0 ? '+' : ''}${cob.toLocaleString('es-CL')}</td>
+      <td><span class="badge-cob" style="color:${color}">${pct !== null ? pct.toFixed(1) + '%' : '—'}</span></td>
+    </tr>`;
+
+    const cursos = Object.keys(e.cursos).sort((a, b) => {
+      const ia = ORDEN_NIVEL.findIndex(n => a.startsWith(n));
+      const ib = ORDEN_NIVEL.findIndex(n => b.startsWith(n));
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+
+    cursos.forEach(cKey => {
+      const c = e.cursos[cKey];
+      const cPct = c.cupos > 0 ? (c.matricula / c.cupos * 100) : null;
+      const cCob = c.matricula - c.cupos;
+      const cColor = colorCobertura(cPct);
+      html += `<tr class="fila-curso oculto fila-curso-${idx}">
+        <td style="padding-left:2rem;">${cKey}</td>
+        <td>${c.matricula.toLocaleString('es-CL')}</td>
+        <td>${c.cupos.toLocaleString('es-CL')}</td>
+        <td>${cCob >= 0 ? '+' : ''}${cCob.toLocaleString('es-CL')}</td>
+        <td><span class="badge-cob" style="color:${cColor}">${cPct !== null ? cPct.toFixed(1) + '%' : '—'}</span></td>
+      </tr>`;
+    });
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function renderVariacionAnual(datosFiltrados) {
+  const wrap = document.getElementById('variacion-anual-wrap');
+  if (!wrap) return;
+
+  const agnos = [...new Set(datosFiltrados.map(d => d.agno))];
+  if (agnos.length === 0) { wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos para los filtros actuales.</p>'; return; }
+  const agnoReciente = agnos.sort((a, b) => Number(b) - Number(a))[0];
+
+  const datosAgno = datosFiltrados.filter(d => d.agno === agnoReciente);
+  const meses = [...new Set(datosAgno.map(d => d.mes))].sort((a, b) => ordenMes(a) - ordenMes(b));
+
+  if (meses.length === 0) { wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos para los filtros actuales.</p>'; return; }
+
+  const mesBase = meses[0];
+  const mesUltimo = meses[meses.length - 1];
+  const matBase = datosAgno.filter(d => d.mes === mesBase).reduce((s, d) => s + d.matricula, 0);
+  const matUltimo = datosAgno.filter(d => d.mes === mesUltimo).reduce((s, d) => s + d.matricula, 0);
+  const diff = matUltimo - matBase;
+  const pct = matBase > 0 ? (diff / matBase * 100) : null;
+  const color = diff > 0 ? 'var(--total)' : (diff < 0 ? 'var(--red)' : 'var(--text)');
+
+  if (meses.length < 2) {
+    wrap.innerHTML = `<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Solo hay un mes cargado para ${agnoReciente} (${mesBase}). La comparación estará disponible cuando se cargue un segundo mes.</p>`;
+    return;
+  }
+
+  wrap.innerHTML = `<div class="variacion-grid">
+    <div class="variacion-item"><div class="kpi-label">Matrícula ${mesBase} ${agnoReciente}</div><div class="kpi-val">${matBase.toLocaleString('es-CL')}</div></div>
+    <div class="variacion-item"><div class="kpi-label">Matrícula ${mesUltimo} ${agnoReciente}</div><div class="kpi-val">${matUltimo.toLocaleString('es-CL')}</div></div>
+    <div class="variacion-item"><div class="kpi-label">Diferencia</div><div class="kpi-val" style="color:${color}">${diff >= 0 ? '+' : ''}${diff.toLocaleString('es-CL')}</div></div>
+    <div class="variacion-item"><div class="kpi-label">Variación</div><div class="kpi-val" style="color:${color}">${pct !== null ? (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%' : '—'}</div></div>
+  </div>`;
+}
+
+function actualizarDashboard() {
+  try {
+      renderActiveFiltersTray();
+      const getArr = (id) => { let v = ts[id].getValue(); return Array.isArray(v) ? v : (v ? [v] : []); };
+      
+      const f = {
+        agno: getArr('agno'),
+        mes: getArr('mes'),
+        ensenanza: getArr('ensenanza'),
+        nivel: getArr('nivel'),
+        letra: getArr('letra'),
+        rbd_est: getArr('rbd_est')
+      };
+
+      let datosFiltrados = DB_RAW.filter(d => {
+        if (f.agno.length && !f.agno.includes(d.agno)) return false;
+        if (f.mes.length && !f.mes.includes(d.mes)) return false;
+        if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
+        if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
+        if (f.letra.length && !f.letra.includes(d.letra)) return false;
+        if (f.rbd_est.length && !f.rbd_est.includes(d.rbd_est)) return false;
+        return true;
+      });
+
+      let datosSlep = DB_RAW.filter(d => {
+        if (f.agno.length && !f.agno.includes(d.agno)) return false;
+        if (f.mes.length && !f.mes.includes(d.mes)) return false;
+        if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
+        if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
+        if (f.letra.length && !f.letra.includes(d.letra)) return false;
+        return true;
+      });
+
+      let asisPonderadaSum = 0, matTotalForAsis = 0, establecimientosUnicos = new Set();
+      
+      let agnosDisponibles = [...new Set(datosFiltrados.map(d=>d.agno))];
+      let ultimoAgno = agnosDisponibles.length > 0 ? Math.max(...agnosDisponibles.map(Number)).toString() : null;
+      let ultimoMes = null;
+      
+      if (ultimoAgno) {
+          let mesesDelUltimoAgno = [...new Set(datosFiltrados.filter(d => d.agno === ultimoAgno).map(d => d.mes))];
+          if (mesesDelUltimoAgno.length > 0) {
+              mesesDelUltimoAgno.sort((a, b) => ordenMes(b) - ordenMes(a));
+              ultimoMes = mesesDelUltimoAgno[0];
+              document.getElementById('kpi-matricula-desc').innerText = `Dato a ${ultimoMes} ${ultimoAgno}`;
+          } else {
+              document.getElementById('kpi-matricula-desc').innerText = "Sin datos";
+          }
+      } else {
+          document.getElementById('kpi-matricula-desc').innerText = "Filtros sin resultados";
+      }
+
+      datosFiltrados.forEach(d => {
+        if (d.asistencia > 0) {
+            asisPonderadaSum += (d.asistencia * d.matricula);
+            matTotalForAsis += d.matricula;
+        }
+        establecimientosUnicos.add(d.rbd_puro);
+      });
+
+      let matReal = 0;
+      let aulasUnicas = new Set();
+      
+      if (ultimoAgno && ultimoMes) {
+          datosFiltrados.filter(d => d.agno === ultimoAgno && d.mes === ultimoMes).forEach(d => {
+              matReal += d.matricula;
+              aulasUnicas.add(`${d.rbd_puro}-${d.ensenanza}-${d.nivel}-${d.letra}`);
+          });
+      }
+
+      let asistenciaPromedio = matTotalForAsis > 0 ? (asisPonderadaSum / matTotalForAsis) : 0;
+
+      document.getElementById('kpi-asistencia').innerText = matTotalForAsis > 0 ? (asistenciaPromedio * 100).toFixed(1) + '%' : '—';
+      document.getElementById('kpi-matricula').innerText = matReal.toLocaleString('es-CL');
+      document.getElementById('kpi-establecimientos').innerText = establecimientosUnicos.size;
+      document.getElementById('kpi-cursos').innerText = aulasUnicas.size;
+
+      let mesesUnicosArr = [...new Set(datosFiltrados.map(d=>d.mes))].sort((a, b) => ordenMes(a) - ordenMes(b));
+      let agnosUnicosArr = [...new Set(datosFiltrados.map(d=>d.agno))].sort();
+
+      let evoAsisData = { labels: mesesUnicosArr, datasets: [] };
+      let evoMatData = { labels: mesesUnicosArr, datasets: [] };
+      let colors = ['#0284c7', '#ea580c', '#1a7f37', '#8250df'];
+
+      let asisPorAgno = {};
+
+      agnosUnicosArr.forEach((agno, idx) => {
+        let dataAsis = [], dataMat = [], dataAsisSlep = [];
+        
+        mesesUnicosArr.forEach(mes => {
+          let df = datosFiltrados.filter(d => d.agno === agno && d.mes === mes);
+          let mSum = 0, aSum = 0;
+          df.forEach(d => { 
+              if(d.asistencia > 0) { aSum += (d.asistencia * d.matricula); mSum += d.matricula; }
+          });
+          dataAsis.push(mSum > 0 ? (aSum/mSum) : null);
+          
+          let dfMat = df.reduce((acc, current) => acc + current.matricula, 0);
+          dataMat.push(dfMat > 0 ? dfMat : null);
+
+          if (SHOW_SLEP && (!IS_ADMIN || f.rbd_est.length > 0)) {
+              let ds = datosSlep.filter(d => d.agno === agno && d.mes === mes);
+              let mSumSlep = 0, aSumSlep = 0;
+              ds.forEach(d => { 
+                  if(d.asistencia > 0) { aSumSlep += (d.asistencia * d.matricula); mSumSlep += d.matricula; }
+              });
+              dataAsisSlep.push(mSumSlep > 0 ? (aSumSlep/mSumSlep) : null);
+          }
+        });
+
+        asisPorAgno[agno] = dataAsis;
+
+        evoAsisData.datasets.push(crearDatasetLineal(`Asistencia ${agno}`, dataAsis, colors[idx % colors.length], false));
+        evoMatData.datasets.push(crearDatasetBarras(`Matrícula ${agno}`, dataMat, colors[idx % colors.length]));
+        
+        if (SHOW_SLEP && (!IS_ADMIN || f.rbd_est.length > 0)) {
+            evoAsisData.datasets.push(crearDatasetLineal(`SLEP ${agno}`, dataAsisSlep, colors[idx % colors.length], true));
+        }
+      });
+
+      // Cálculo de Variación Interanual (Requerimiento 2)
+      let evoVarData = { labels: mesesUnicosArr, datasets: [] };
+      if (agnosUnicosArr.length >= 2) {
+          let agnoActual = agnosUnicosArr[agnosUnicosArr.length - 1];
+          let agnoAnterior = agnosUnicosArr[agnosUnicosArr.length - 2];
+          let dataVar = [];
+
+          mesesUnicosArr.forEach((mes, mIdx) => {
+              let valActual = asisPorAgno[agnoActual] ? asisPorAgno[agnoActual][mIdx] : null;
+              let valAnterior = asisPorAgno[agnoAnterior] ? asisPorAgno[agnoAnterior][mIdx] : null;
+              if (valActual !== null && valAnterior !== null) {
+                  dataVar.push(valActual - valAnterior); 
+              } else {
+                  dataVar.push(null);
+              }
+          });
+
+          evoVarData.datasets.push({
+              label: `Diferencia ${agnoActual} vs ${agnoAnterior}`,
+              data: dataVar,
+              borderColor: '#cf222e',
+              backgroundColor: 'rgba(207, 34, 46, 0.1)',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#cf222e',
+              tension: 0.2,
+              fill: true
+          });
+      }
+      
+      actualizarGrafico(charts['asis-evo'], evoAsisData);
+      actualizarGrafico(charts['asis-var'], evoVarData);
+      renderTablaCobertura(datosFiltrados);
+      renderVariacionAnual(datosFiltrados);
+
+      let datosCorte = [];
+      if (ultimoAgno && ultimoMes) {
+          datosCorte = datosFiltrados.filter(d => d.agno === ultimoAgno && d.mes === ultimoMes);
+      }
+      
+      let ensData = agruparPorCategoria(datosCorte, 'ensenanza', ORDEN_ENSENANZA);
+      actualizarGraficoHBar(charts['asis-ensenanza'], ensData.labels, ensData.asistencias, '#8250df');
+      
+      let nivData = agruparPorCategoria(datosCorte, 'nivel', ORDEN_NIVEL);
+      actualizarGraficoHBar(charts['asis-nivel'], nivData.labels, nivData.asistencias, '#ea580c');
+
+  } catch (error) {
+      console.error("Error en el renderizado del dashboard:", error);
+  }
+}
+
+function agruparPorCategoria(data, variable, arrayOrdenamiento) {
+    let grupos = {};
+    data.forEach(d => {
+        let k = d[variable];
+        if(!grupos[k]) grupos[k] = { asisSum: 0, matSum: 0 };
+        if(d.asistencia > 0) {
+            grupos[k].matSum += d.matricula;
+            grupos[k].asisSum += (d.asistencia * d.matricula);
+        }
+    });
+
+    let labels = Object.keys(grupos).sort((a,b) => {
+        let idxA = arrayOrdenamiento.indexOf(a);
+        let idxB = arrayOrdenamiento.indexOf(b);
+        return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
+    });
+    let asistencias = labels.map(l => grupos[l].matSum > 0 ? grupos[l].asisSum / grupos[l].matSum : null);
+    
+    return { labels, asistencias };
+}
+
+function crearDatasetLineal(label, data, color, isSlep) {
+    return { label: label, data: data, borderColor: isSlep ? color + '88' : color, backgroundColor: isSlep ? 'transparent' : color + '11', borderWidth: isSlep ? 2 : 3, borderDash: isSlep ? [5, 5] : [], fill: !isSlep, pointStyle: isSlep ? 'triangle' : 'circle', pointRadius: 4, tension: 0.2 };
+}
+function crearDatasetBarras(label, data, color) { return { label: label, data: data, backgroundColor: color + 'DD', borderRadius: 4 }; }
+function actualizarGrafico(chart, dataObj) { chart.data = dataObj; chart.update(); }
+function actualizarGraficoHBar(chart, labels, data, color) { chart.data = { labels: labels, datasets: [{ label: 'Asistencia Promedio', data: data, backgroundColor: color + 'CC', borderRadius: 4 }] }; chart.update(); }
+
+// --- CONFIGURACIÓN UI Y CHART.JS ---
+function toggleTheme() {
+  const isDark = document.getElementById('theme-toggle').checked;
+  document.body.classList.toggle('dark-theme', isDark);
+  document.getElementById('theme-label-text').innerText = isDark ? 'Tema Oscuro' : 'Tema Claro';
+  document.getElementById('theme-label-text').style.color = isDark ? 'var(--text)' : 'var(--text-muted)';
+  
+  const gridColor = isDark ? '#21262d' : '#e5e7eb';
+  const textColor = isDark ? '#7d8590' : '#57606a';
+  Object.values(charts).forEach(chart => {
+      if(chart.options.scales.x) { chart.options.scales.x.grid.color = gridColor; chart.options.scales.x.ticks.color = textColor; }
+      if(chart.options.scales.y) { 
+          if (chart.canvas.id !== 'chart-asis-var') {
+              chart.options.scales.y.grid.color = gridColor; 
+          }
+          chart.options.scales.y.ticks.color = textColor; 
+      }
+      chart.update();
+  });
+}
+
+function showTab(tabId, e) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).style.display = 'block';
+  if(e) e.currentTarget.classList.add('active');
+}
+
+function toggleSlep() { SHOW_SLEP = document.getElementById('slep-toggle').checked; document.getElementById('slep-label-text').style.color = SHOW_SLEP ? 'var(--leng)' : 'var(--text-muted)'; actualizarDashboard(); }
+
+function initCharts() {
+  // Requerimiento 1: Zoom de Asistencia fijado entre 60% (0.6) y 100% (1.0)
+  const getOptLine = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0.6, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.raw * 100).toFixed(1) + '%' } } } });
+  const getOptBar = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
+  const getOptHBar = () => ({ responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0.5, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { legend:{display:false}, tooltip: { callbacks: { label: c => (c.raw * 100).toFixed(1) + '%' } } } });
+
+  // Opciones para el gráfico de variación con resaltado en la línea base del 0%
+  const getOptVar = () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    const gridColor = isDark ? '#21262d' : '#e5e7eb';
+    const textColor = isDark ? '#7d8590' : '#57606a';
+    return {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+        y: {
+          grid: {
+            color: function(context) {
+              const innerDark = document.body.classList.contains('dark-theme');
+              if (context.tick && context.tick.value === 0) return innerDark ? '#f87171' : '#cf222e'; // Línea del 0% en rojo
+              return innerDark ? '#21262d' : '#e5e7eb';
+            },
+            lineWidth: (context) => context.tick && context.tick.value === 0 ? 2 : 1
+          },
+          ticks: {
+            color: textColor,
+            callback: v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%'
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+              label: c => `${c.dataset.label}: ${c.raw >= 0 ? '+' : ''}${(c.raw * 100).toFixed(1)}%`
+          }
+        }
+      }
+    };
+  };
+
+  charts['asis-evo'] = new Chart(document.getElementById('chart-asis-evo'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLine() });
+  charts['asis-var'] = new Chart(document.getElementById('chart-asis-var'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptVar() });
+
+  charts['asis-ensenanza'] = new Chart(document.getElementById('chart-asis-ensenanza'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
+  charts['asis-nivel'] = new Chart(document.getElementById('chart-asis-nivel'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
+  toggleTheme(); 
+}
+
+function descargarGrafico(btn) {
+  const card = btn.closest('.chart-card');
+  btn.style.opacity = '0'; 
+  const titleEl = card.querySelector('.chart-title');
+  let fileName = titleEl ? titleEl.innerText.replace(/\n/g, '_').replace(/ /g, '_') + '.png' : 'Grafico.png';
+  const isDark = document.body.classList.contains('dark-theme');
+  html2canvas(card, { backgroundColor: isDark ? '#161b22' : '#ffffff', scale: 2 }).then(canvas => {
+    const link = document.createElement('a'); link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
+    btn.style.opacity = ''; 
+  });
+}
+</script>
+</body>
+</html>
