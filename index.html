@@ -201,6 +201,7 @@
     <button class="tab-btn active" onclick="showTab('tab-general', event)">Panorama General</button>
     <button class="tab-btn" onclick="showTab('tab-niveles', event)">Análisis por Niveles</button>
     <button class="tab-btn" onclick="showTab('tab-retencion', event)">Matrícula y Cobertura</button>
+    <button class="tab-btn" id="tab-btn-colegios" onclick="showTab('tab-colegios', event)" style="display:none;">Análisis por Colegio</button>
     
     <div class="slep-toggle-wrapper">
       <span class="slep-toggle-label" id="slep-label-text">PROMEDIO SLEP</span>
@@ -254,6 +255,13 @@
         <div class="chart-header"><div class="chart-title">Variación Interanual de Asistencia<span>Diferencia en Puntos Porcentuales respecto al Año Anterior (Umbral 0%)</span></div></div>
         <div class="chart-wrap" style="height: 280px;"><canvas id="chart-asis-var"></canvas></div>
       </div>
+      <div class="chart-card full-width">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Evolución de Matrícula<span>Matrícula Total (Mes a Mes)</span></div></div>
+        <div class="chart-wrap" style="height: 300px;"><canvas id="chart-mat-evo"></canvas></div>
+      </div>
     </div>
   </div>
 
@@ -305,6 +313,40 @@
       <div class="chart-card full-width">
         <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span id="tabla-cobertura-desc">Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)</span></div></div>
         <div id="tabla-cobertura-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-colegios" class="tab-content" style="display:none;">
+    <div class="charts-grid">
+      <div class="chart-card full-width">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Evolución de Asistencia Mensual<span>Una línea por establecimiento (RBD)</span></div></div>
+        <div class="chart-wrap" style="height: 480px;"><canvas id="chart-colegios-asis"></canvas></div>
+      </div>
+
+      <div class="chart-card full-width">
+        <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+        <div class="chart-header"><div class="chart-title">Evolución de Matrícula Mensual<span>Una línea por establecimiento (RBD)</span></div></div>
+        <div class="chart-wrap" style="height: 480px;"><canvas id="chart-colegios-mat"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-grid" style="margin-top: 1.5rem;">
+      <div class="chart-card full-width">
+        <div class="chart-header"><div class="chart-title">Asistencia por Establecimiento<span>Detalle mensual y acumulado anual ponderado (Suma Asistencia×Matrícula / Suma Matrícula)</span></div></div>
+        <div id="tabla-colegios-asis-wrap" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <div class="charts-grid" style="margin-top: 1.5rem;">
+      <div class="chart-card full-width">
+        <div class="chart-header"><div class="chart-title">Matrícula por Establecimiento<span>Detalle mensual y promedio anual</span></div></div>
+        <div id="tabla-colegios-mat-wrap" style="overflow-x:auto;"></div>
       </div>
     </div>
   </div>
@@ -468,6 +510,10 @@ function iniciarInterfaz() {
 
   configurarFiltros();
   initCharts();
+
+  if (IS_ADMIN) {
+    document.getElementById('tab-btn-colegios').style.display = '';
+  }
   
   if (!IS_ADMIN && SESSION_RBD) {
     const dataColegio = DB_RAW.find(d => d.rbd_puro === SESSION_RBD);
@@ -848,8 +894,13 @@ function actualizarDashboard() {
       
       actualizarGrafico(charts['asis-evo'], evoAsisData);
       actualizarGrafico(charts['asis-var'], evoVarData);
+      actualizarGrafico(charts['mat-evo'], evoMatData);
       renderTablaCobertura(datosFiltrados);
       renderVariacionAnual(datosFiltrados);
+
+      if (IS_ADMIN) {
+          renderAnalisisColegios(datosFiltrados);
+      }
 
       let datosCorte = [];
       if (ultimoAgno && ultimoMes) {
@@ -895,6 +946,85 @@ function crearDatasetBarras(label, data, color) { return { label: label, data: d
 function actualizarGrafico(chart, dataObj) { chart.data = dataObj; chart.update(); }
 function actualizarGraficoHBar(chart, labels, data, color) { chart.data = { labels: labels, datasets: [{ label: 'Asistencia Promedio', data: data, backgroundColor: color + 'CC', borderRadius: 4 }] }; chart.update(); }
 
+// --- REQUERIMIENTO: ANÁLISIS POR COLEGIO (SOLO ADMIN) ---
+// Color distintivo por establecimiento usando ángulo dorado, para separar visualmente
+// hasta ~80 líneas sin repetir tonos cercanos.
+function colorEstablecimiento(idx) {
+    const hue = (idx * 137.508) % 360;
+    return `hsl(${hue.toFixed(1)}, 65%, 45%)`;
+}
+
+function renderAnalisisColegios(datosFiltrados) {
+    const wrapAsis = document.getElementById('tabla-colegios-asis-wrap');
+    const wrapMat = document.getElementById('tabla-colegios-mat-wrap');
+    if (!wrapAsis || !wrapMat) return;
+
+    const meses = [...new Set(datosFiltrados.map(d => d.mes))].sort((a, b) => ordenMes(a) - ordenMes(b));
+    const establecimientos = [...new Set(datosFiltrados.map(d => d.rbd_est))].sort((a, b) => a.localeCompare(b, 'es'));
+
+    // Agrupar matrícula y asistencia ponderada por establecimiento y mes (colapsa ensenanza/nivel/letra)
+    const agrup = {};
+    establecimientos.forEach(est => {
+        agrup[est] = {};
+        meses.forEach(mes => { agrup[est][mes] = { matSum: 0, asisSum: 0 }; });
+    });
+    datosFiltrados.forEach(d => {
+        const celda = agrup[d.rbd_est] && agrup[d.rbd_est][d.mes];
+        if (!celda) return;
+        celda.matSum += d.matricula;
+        if (d.asistencia > 0) celda.asisSum += (d.asistencia * d.matricula);
+    });
+
+    // --- Gráficos spaghetti (una línea por establecimiento) ---
+    const dataAsisChart = { labels: meses, datasets: [] };
+    const dataMatChart = { labels: meses, datasets: [] };
+
+    establecimientos.forEach((est, idx) => {
+        const color = colorEstablecimiento(idx);
+        const serieAsis = meses.map(mes => { const c = agrup[est][mes]; return c.matSum > 0 ? c.asisSum / c.matSum : null; });
+        const serieMat = meses.map(mes => { const c = agrup[est][mes]; return c.matSum > 0 ? c.matSum : null; });
+        const baseDataset = { label: est, borderColor: color, backgroundColor: 'transparent', borderWidth: 1.4, pointRadius: 0, pointHoverRadius: 4, tension: 0.15, fill: false, spanGaps: true };
+        dataAsisChart.datasets.push({ ...baseDataset, data: serieAsis });
+        dataMatChart.datasets.push({ ...baseDataset, data: serieMat });
+    });
+
+    if (charts['colegios-asis']) actualizarGrafico(charts['colegios-asis'], dataAsisChart);
+    if (charts['colegios-mat']) actualizarGrafico(charts['colegios-mat'], dataMatChart);
+
+    // --- Tabla A: Asistencia mensual + Acumulado Anual (ponderado) ---
+    let htmlAsis = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Acumulado Anual</th></tr></thead><tbody>';
+    establecimientos.forEach(est => {
+        let totalMat = 0, totalAsis = 0;
+        let fila = `<tr><td>${est}</td>`;
+        meses.forEach(mes => {
+            const c = agrup[est][mes];
+            fila += `<td>${c.matSum > 0 ? (c.asisSum / c.matSum * 100).toFixed(1) + '%' : '—'}</td>`;
+            totalMat += c.matSum;
+            totalAsis += c.asisSum;
+        });
+        fila += `<td><strong>${totalMat > 0 ? (totalAsis / totalMat * 100).toFixed(1) + '%' : '—'}</strong></td></tr>`;
+        htmlAsis += fila;
+    });
+    htmlAsis += '</tbody></table>';
+    wrapAsis.innerHTML = htmlAsis;
+
+    // --- Tabla B: Matrícula mensual + Promedio Anual (aritmético) ---
+    let htmlMat = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Promedio Anual</th></tr></thead><tbody>';
+    establecimientos.forEach(est => {
+        let sumaMat = 0, mesesConDato = 0;
+        let fila = `<tr><td>${est}</td>`;
+        meses.forEach(mes => {
+            const c = agrup[est][mes];
+            fila += `<td>${c.matSum > 0 ? c.matSum.toLocaleString('es-CL') : '—'}</td>`;
+            if (c.matSum > 0) { sumaMat += c.matSum; mesesConDato++; }
+        });
+        fila += `<td><strong>${mesesConDato > 0 ? Math.round(sumaMat / mesesConDato).toLocaleString('es-CL') : '—'}</strong></td></tr>`;
+        htmlMat += fila;
+    });
+    htmlMat += '</tbody></table>';
+    wrapMat.innerHTML = htmlMat;
+}
+
 // --- CONFIGURACIÓN UI Y CHART.JS ---
 function toggleTheme() {
   const isDark = document.getElementById('theme-toggle').checked;
@@ -929,6 +1059,20 @@ function initCharts() {
   // Requerimiento 1: Zoom de Asistencia fijado entre 60% (0.6) y 100% (1.0)
   const getOptLine = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0.6, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.raw * 100).toFixed(1) + '%' } } } });
   const getOptBar = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
+  const getOptBarMat = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw !== null ? c.raw.toLocaleString('es-CL') : '—'}` } } } });
+  const getOptLineColegios = (esPorcentaje) => ({
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'nearest', intersect: true },
+    scales: {
+      y: esPorcentaje
+        ? { min: 0, max: 1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } }
+        : { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } }
+    },
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${esPorcentaje ? (c.raw * 100).toFixed(1) + '%' : c.raw.toLocaleString('es-CL')}` } }
+    }
+  });
   const getOptHBar = () => ({ responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0.5, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { legend:{display:false}, tooltip: { callbacks: { label: c => (c.raw * 100).toFixed(1) + '%' } } } });
 
   // Opciones para el gráfico de variación con resaltado en la línea base del 0%
@@ -970,6 +1114,9 @@ function initCharts() {
 
   charts['asis-ensenanza'] = new Chart(document.getElementById('chart-asis-ensenanza'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
   charts['asis-nivel'] = new Chart(document.getElementById('chart-asis-nivel'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
+  charts['mat-evo'] = new Chart(document.getElementById('chart-mat-evo'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptBarMat() });
+  charts['colegios-asis'] = new Chart(document.getElementById('chart-colegios-asis'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLineColegios(true) });
+  charts['colegios-mat'] = new Chart(document.getElementById('chart-colegios-mat'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLineColegios(false) });
   toggleTheme(); 
 }
 
