@@ -103,6 +103,7 @@
     .main { max-width: 1560px; margin: 0 auto; padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
     
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .kpi-grid-compact { grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); justify-content: start; }
     .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.25rem; position: relative; }
     .kpi::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--kpi-c); opacity: 0.5; }
     .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
@@ -283,11 +284,11 @@
         <div id="variacion-anual-wrap"></div>
       </div>
     </div>
-    <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+    <div class="kpi-grid kpi-grid-compact" style="margin-bottom: 1.5rem;">
       <div class="kpi" style="--kpi-c: var(--leng)">
         <div class="kpi-label">Cupos 2026</div>
         <div class="kpi-val" id="kpi-cupos">—</div>
-        <div class="kpi-desc">Total disponible (Junio)</div>
+        <div class="kpi-desc" id="kpi-cupos-desc">Total disponible</div>
       </div>
       <div class="kpi" style="--kpi-c: var(--purple)">
         <div class="kpi-label">Cobertura</div>
@@ -302,7 +303,7 @@
     </div>
     <div class="charts-grid">
       <div class="chart-card full-width">
-        <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span>Junio 2026 · Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)</span></div></div>
+        <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span id="tabla-cobertura-desc">Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)</span></div></div>
         <div id="tabla-cobertura-wrap"></div>
       </div>
     </div>
@@ -314,6 +315,18 @@
 const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx2wv9TroK9XDnSw6J5G8LJAw11SeHS370_qI_vgzKeVeEO68NOSuMyQ-k2ww3-ns2XVC7JyrKBkbZ/pub?gid=45523755&single=true&output=csv';
 
 const ORDEN_MESES = ['1','2','3','4','5','6','7','8','9','10','11','12','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Los meses llegan de la planilla con formato "N.NombreMes" (ej. "4.Junio").
+// Se extrae el número inicial para un orden cronológico robusto, sin depender
+// del orden en que aparecen las filas en la base. Si no calza el patrón, se
+// usa ORDEN_MESES como respaldo.
+function ordenMes(mesStr) {
+  if (!mesStr) return 999;
+  const m = mesStr.toString().trim().match(/^(\d+)/);
+  if (m) return parseInt(m[1], 10);
+  const idx = ORDEN_MESES.indexOf(mesStr);
+  return idx === -1 ? 999 : idx;
+}
 const ORDEN_ENSENANZA = ['Educación Parvularia', 'Enseñanza Básica', 'Enseñanza Media', 'Educación de Adultos', 'Educación Especial'];
 const ORDEN_NIVEL = ['Sala Cuna', 'Medio Menor', 'Medio Mayor', '1er Nivel de Transición', '2do Nivel de Transición', '1° básico', '2° básico', '3° básico', '4° básico', '5° básico', '6° básico', '7° básico', '8° básico', '1° medio', '2° medio', '3° medio', '4° medio'];
 
@@ -567,6 +580,20 @@ function renderTablaCobertura(datosFiltrados) {
 
   const datosCob = datosFiltrados.filter(d => d.cupos2026 !== null);
 
+  // Rótulo dinámico: mes/año más reciente que efectivamente trae datos de cupos,
+  // para no dejar "Junio" fijo cuando la planilla sume meses nuevos con cupos.
+  let cupoLabel = '';
+  if (datosCob.length > 0) {
+    const agnoCobReciente = [...new Set(datosCob.map(d => d.agno))].sort((a, b) => Number(b) - Number(a))[0];
+    const mesCobReciente = [...new Set(datosCob.filter(d => d.agno === agnoCobReciente).map(d => d.mes))]
+      .sort((a, b) => ordenMes(b) - ordenMes(a))[0];
+    cupoLabel = `${mesCobReciente} ${agnoCobReciente}`;
+  }
+  const cuposDescEl = document.getElementById('kpi-cupos-desc');
+  if (cuposDescEl) cuposDescEl.innerText = cupoLabel ? `Total disponible (${cupoLabel})` : 'Total disponible';
+  const tablaCobDescEl = document.getElementById('tabla-cobertura-desc');
+  if (tablaCobDescEl) tablaCobDescEl.innerText = (cupoLabel ? cupoLabel + ' · ' : '') + 'Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)';
+
   let totalMat = 0, totalCupos = 0;
   const porEst = {};
   datosCob.forEach(d => {
@@ -586,7 +613,7 @@ function renderTablaCobertura(datosFiltrados) {
   document.getElementById('kpi-pct-cobertura').innerText = totalCupos > 0 ? (totalMat / totalCupos * 100).toFixed(1) + '%' : '—';
 
   if (Object.keys(porEst).length === 0) {
-    wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos de cobertura para los filtros actuales (esta información solo existe para Junio 2026).</p>';
+    wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos de cobertura para los filtros actuales (esta información solo existe para el mes más reciente con cupos cargados).</p>';
     return;
   }
 
@@ -645,7 +672,7 @@ function renderVariacionAnual(datosFiltrados) {
   const agnoReciente = agnos.sort((a, b) => Number(b) - Number(a))[0];
 
   const datosAgno = datosFiltrados.filter(d => d.agno === agnoReciente);
-  const meses = [...new Set(datosAgno.map(d => d.mes))].sort((a, b) => ORDEN_MESES.indexOf(a) - ORDEN_MESES.indexOf(b));
+  const meses = [...new Set(datosAgno.map(d => d.mes))].sort((a, b) => ordenMes(a) - ordenMes(b));
 
   if (meses.length === 0) { wrap.innerHTML = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Sin datos para los filtros actuales.</p>'; return; }
 
@@ -712,7 +739,7 @@ function actualizarDashboard() {
       if (ultimoAgno) {
           let mesesDelUltimoAgno = [...new Set(datosFiltrados.filter(d => d.agno === ultimoAgno).map(d => d.mes))];
           if (mesesDelUltimoAgno.length > 0) {
-              mesesDelUltimoAgno.sort((a, b) => ORDEN_MESES.indexOf(b) - ORDEN_MESES.indexOf(a));
+              mesesDelUltimoAgno.sort((a, b) => ordenMes(b) - ordenMes(a));
               ultimoMes = mesesDelUltimoAgno[0];
               document.getElementById('kpi-matricula-desc').innerText = `Dato a ${ultimoMes} ${ultimoAgno}`;
           } else {
@@ -747,7 +774,7 @@ function actualizarDashboard() {
       document.getElementById('kpi-establecimientos').innerText = establecimientosUnicos.size;
       document.getElementById('kpi-cursos').innerText = aulasUnicas.size;
 
-      let mesesUnicosArr = [...new Set(datosFiltrados.map(d=>d.mes))].sort((a, b) => ORDEN_MESES.indexOf(a) - ORDEN_MESES.indexOf(b));
+      let mesesUnicosArr = [...new Set(datosFiltrados.map(d=>d.mes))].sort((a, b) => ordenMes(a) - ordenMes(b));
       let agnosUnicosArr = [...new Set(datosFiltrados.map(d=>d.agno))].sort();
 
       let evoAsisData = { labels: mesesUnicosArr, datasets: [] };
