@@ -106,6 +106,7 @@
     .kpi-grid-compact { grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); justify-content: start; }
 
     .chart-empty-msg { display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 0 2rem; }
+    .chart-section-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted); text-transform: uppercase; margin: 0 0 0.6rem 0.2rem; }
     .selector-colegios { display: flex; gap: 0.75rem; align-items: flex-start; }
     .buscador-colegios-wrap { position: relative; flex: 1; }
     .input-buscador { width: 100%; box-sizing: border-box; padding: 0.55rem 0.75rem; font-family: var(--font); font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
@@ -258,8 +259,9 @@
       </div>
     </div>
     
+    <div class="chart-section-label">Asistencia</div>
     <div class="charts-grid">
-      <div class="chart-card full-width">
+      <div class="chart-card">
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
@@ -267,13 +269,17 @@
         <div class="chart-wrap" style="height: 350px;"><canvas id="chart-asis-evo"></canvas></div>
       </div>
 
-      <div class="chart-card full-width">
+      <div class="chart-card">
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
         <div class="chart-header"><div class="chart-title">Variación Interanual de Asistencia<span>Diferencia en Puntos Porcentuales respecto al Año Anterior (Umbral 0%)</span></div></div>
         <div class="chart-wrap" style="height: 280px;"><canvas id="chart-asis-var"></canvas></div>
       </div>
+    </div>
+
+    <div class="chart-section-label" style="margin-top: 1.5rem;">Matrícula</div>
+    <div class="charts-grid">
       <div class="chart-card full-width">
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -330,6 +336,9 @@
     </div>
     <div class="charts-grid">
       <div class="chart-card full-width">
+        <button class="btn-download" onclick="exportarTablaCSV('tabla-cobertura-wrap', 'cobertura_matricula')" title="Exportar CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
         <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span id="tabla-cobertura-desc">Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)</span></div></div>
         <div id="tabla-cobertura-wrap"></div>
       </div>
@@ -376,6 +385,9 @@
 
     <div class="charts-grid" style="margin-top: 1.5rem;">
       <div class="chart-card full-width">
+        <button class="btn-download" onclick="exportarTablaCSV('tabla-colegios-asis-wrap', 'asistencia_por_colegio')" title="Exportar CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
         <div class="chart-header"><div class="chart-title">Asistencia por Establecimiento<span id="colegios-desc-asis-tabla">Detalle mensual y acumulado anual ponderado (Suma Asistencia×Matrícula / Suma Matrícula)</span></div></div>
         <div id="tabla-colegios-asis-wrap" style="overflow-x:auto;"></div>
       </div>
@@ -383,6 +395,9 @@
 
     <div class="charts-grid" style="margin-top: 1.5rem;">
       <div class="chart-card full-width">
+        <button class="btn-download" onclick="exportarTablaCSV('tabla-colegios-mat-wrap', 'matricula_por_colegio')" title="Exportar CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
         <div class="chart-header"><div class="chart-title">Matrícula por Establecimiento<span id="colegios-desc-mat-tabla">Detalle mensual y promedio anual</span></div></div>
         <div id="tabla-colegios-mat-wrap" style="overflow-x:auto;"></div>
       </div>
@@ -982,6 +997,31 @@ function crearDatasetLineal(label, data, color, isSlep) {
 }
 function crearDatasetBarras(label, data, color) { return { label: label, data: data, backgroundColor: color + 'DD', borderRadius: 4 }; }
 function actualizarGrafico(chart, dataObj) { chart.data = dataObj; chart.update(); }
+
+// Exporta cualquier tabla HTML (dentro del contenedor indicado) a un archivo CSV descargable.
+// Usa ; como separador y BOM UTF-8 para que Excel en configuración regional es-CL lo abra bien.
+function exportarTablaCSV(wrapperId, nombreArchivo) {
+    const wrapper = document.getElementById(wrapperId);
+    const tabla = wrapper ? wrapper.querySelector('table') : null;
+    if (!tabla) { alert('No hay datos para exportar con los filtros actuales.'); return; }
+
+    const filas = [...tabla.querySelectorAll('tr')];
+    const csv = filas.map(fila =>
+        [...fila.querySelectorAll('th,td')]
+            .map(celda => `"${celda.innerText.replace(/"/g, '""').trim()}"`)
+            .join(';')
+    ).join('\r\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${nombreArchivo}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 function actualizarGraficoHBar(chart, labels, data, color) { chart.data = { labels: labels, datasets: [{ label: 'Asistencia Promedio', data: data, backgroundColor: color + 'CC', borderRadius: 4 }] }; chart.update(); }
 
 // --- REQUERIMIENTO: ANÁLISIS POR COLEGIO (SOLO ADMIN) ---
@@ -1045,45 +1085,75 @@ function renderAnalisisColegios(datosFiltrados) {
     const setDescColegios = (id, base) => { const el = document.getElementById(id); if (el) el.innerText = base + sufijoAnio; };
     setDescColegios('colegios-desc-asis-chart', 'Una línea por establecimiento (RBD)');
     setDescColegios('colegios-desc-mat-chart', 'Una línea por establecimiento (RBD)');
-    setDescColegios('colegios-desc-asis-tabla', 'Detalle mensual y acumulado anual ponderado (Suma Asistencia×Matrícula / Suma Matrícula)');
-    setDescColegios('colegios-desc-mat-tabla', 'Detalle mensual y promedio anual');
+    setDescColegios('colegios-desc-asis-tabla', 'Detalle mensual y acumulado anual ponderado (Suma Asistencia×Matrícula / Suma Matrícula). Color: rojo 60% – verde 100%');
+    setDescColegios('colegios-desc-mat-tabla', 'Detalle mensual y promedio anual. Color relativo por colegio: verde = su mes más alto, rojo = su mes más bajo');
 
     const btnTodos = document.getElementById('btn-todos-colegios');
     if (btnTodos) btnTodos.innerText = `Seleccionar todos (${establecimientos.length})`;
 
     // Las tablas siempre muestran TODOS los establecimientos (no dependen del selector de los gráficos)
+    // Heatmap: interpola rojo(0) -> amarillo(0.5) -> verde(1) según t (0..1)
+    const colorHeatmap = (t) => {
+        t = Math.max(0, Math.min(1, t));
+        return `hsl(${Math.round(t * 120)}, 65%, 38%)`;
+    };
+
     // --- Tabla A: Asistencia mensual + Acumulado Anual (ponderado) ---
+    // Heatmap por umbral fijo: 60% (rojo) a 100% (verde), igual escala que el resto del panel.
     let htmlAsis = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Acumulado Anual</th></tr></thead><tbody>';
     establecimientos.forEach(est => {
         let totalMat = 0, totalAsis = 0;
         let fila = `<tr><td>${est}</td>`;
         meses.forEach(mes => {
             const c = agrup[est][mes];
-            fila += `<td>${c.matSum > 0 ? (c.asisSum / c.matSum * 100).toFixed(1) + '%' : '—'}</td>`;
+            if (c.matSum > 0) {
+                const pct = c.asisSum / c.matSum;
+                const t = (pct - 0.60) / 0.40;
+                fila += `<td style="background:${colorHeatmap(t)}; color:#fff;">${(pct * 100).toFixed(1)}%</td>`;
+            } else {
+                fila += `<td>—</td>`;
+            }
             totalMat += c.matSum;
             totalAsis += c.asisSum;
         });
-        fila += `<td><strong>${totalMat > 0 ? (totalAsis / totalMat * 100).toFixed(1) + '%' : '—'}</strong></td></tr>`;
+        if (totalMat > 0) {
+            const pctTotal = totalAsis / totalMat;
+            const tTotal = (pctTotal - 0.60) / 0.40;
+            fila += `<td style="background:${colorHeatmap(tTotal)}; color:#fff;"><strong>${(pctTotal * 100).toFixed(1)}%</strong></td></tr>`;
+        } else {
+            fila += `<td><strong>—</strong></td></tr>`;
+        }
         htmlAsis += fila;
     });
     htmlAsis += '</tbody></table>';
     wrapAsis.innerHTML = htmlAsis;
 
     // --- Tabla B: Matrícula mensual + Promedio Anual (aritmético) ---
+    // Heatmap relativo a cada fila: verde = el mes más alto de ESE colegio, rojo = el más bajo
+    // (una matrícula global fija no tendría sentido entre un liceo de 500 y una escuela de 40).
     let htmlMat = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Promedio Anual</th></tr></thead><tbody>';
     establecimientos.forEach(est => {
+        const valoresFila = meses.map(mes => agrup[est][mes].matSum).filter(v => v > 0);
+        const minFila = valoresFila.length ? Math.min(...valoresFila) : 0;
+        const maxFila = valoresFila.length ? Math.max(...valoresFila) : 0;
         let sumaMat = 0, mesesConDato = 0;
         let fila = `<tr><td>${est}</td>`;
         meses.forEach(mes => {
             const c = agrup[est][mes];
-            fila += `<td>${c.matSum > 0 ? c.matSum.toLocaleString('es-CL') : '—'}</td>`;
-            if (c.matSum > 0) { sumaMat += c.matSum; mesesConDato++; }
+            if (c.matSum > 0) {
+                const t = maxFila > minFila ? (c.matSum - minFila) / (maxFila - minFila) : 0.5;
+                fila += `<td style="background:${colorHeatmap(t)}; color:#fff;">${c.matSum.toLocaleString('es-CL')}</td>`;
+                sumaMat += c.matSum; mesesConDato++;
+            } else {
+                fila += `<td>—</td>`;
+            }
         });
         fila += `<td><strong>${mesesConDato > 0 ? Math.round(sumaMat / mesesConDato).toLocaleString('es-CL') : '—'}</strong></td></tr>`;
         htmlMat += fila;
     });
     htmlMat += '</tbody></table>';
     wrapMat.innerHTML = htmlMat;
+
 
     // Los gráficos dependen de la selección del usuario, no de "todos" los establecimientos
     renderChipsColegios();
@@ -1226,6 +1296,22 @@ function showTab(tabId, e) {
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(tabId).style.display = 'block';
   if(e) e.currentTarget.classList.add('active');
+
+  // "Análisis por Colegio" tiene su propio selector de establecimientos (independiente);
+  // el filtro global no aplica ahí, así que se oculta y se limpia para no arrastrar
+  // una selección hecha en otra pestaña.
+  const grupoRbd = document.getElementById('group-rbd');
+  if (grupoRbd) {
+    if (tabId === 'tab-colegios') {
+      grupoRbd.style.display = 'none';
+      if (ts['rbd_est'] && ts['rbd_est'].getValue().length > 0) {
+        ts['rbd_est'].setValue([], true);
+        actualizarDashboard();
+      }
+    } else if (IS_ADMIN) {
+      grupoRbd.style.display = '';
+    }
+  }
 }
 
 function toggleSlep() { SHOW_SLEP = document.getElementById('slep-toggle').checked; document.getElementById('slep-label-text').style.color = SHOW_SLEP ? 'var(--leng)' : 'var(--text-muted)'; actualizarDashboard(); }
