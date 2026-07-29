@@ -194,7 +194,8 @@
     <div class="filter-group" style="flex: 1.2;" data-label="ENSEÑANZA ▾"><select id="f-ensenanza" multiple placeholder="Enseñanza..."></select></div>
     <div class="filter-group" style="flex: 1.2;" data-label="NIVEL ▾"><select id="f-nivel" multiple placeholder="Nivel..."></select></div>
     <div class="filter-group" style="flex: 0.8;" data-label="LETRA ▾"><select id="f-letra" multiple placeholder="Letra..."></select></div>
-    
+    <div class="filter-group" style="flex: 1;" data-label="COMUNA ▾"><select id="f-comuna" multiple placeholder="Comuna..."></select></div>
+
     <div class="filter-group" id="group-rbd" style="flex: 2.5;" data-label="ESTABLECIMIENTO ▾">
       <select id="f-rbd" multiple placeholder="Buscar unidad educativa..."></select>
     </div>
@@ -240,7 +241,7 @@
       <div class="kpi" style="--kpi-c: var(--leng)">
         <div class="kpi-label">Asistencia Ponderada</div>
         <div class="kpi-val" id="kpi-asistencia">—</div>
-        <div class="kpi-desc">Promedio exacto s/matrícula</div>
+        <div class="kpi-desc" id="kpi-asistencia-desc">Promedio exacto s/matrícula</div>
       </div>
       <div class="kpi" style="--kpi-c: var(--mate)">
         <div class="kpi-label">Matrícula Activa</div>
@@ -408,6 +409,8 @@
 <script>
 // --- CONFIGURACIÓN Y DICCIONARIOS DE ORDENAMIENTO ESTRICTO ---
 const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQx2wv9TroK9XDnSw6J5G8LJAw11SeHS370_qI_vgzKeVeEO68NOSuMyQ-k2ww3-ns2XVC7JyrKBkbZ/pub?gid=45523755&single=true&output=csv';
+// URL de despliegue del Apps Script que valida usuario/clave (Implementar > Nueva implementación > Aplicación web).
+const AUTH_ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbxtd7WGL55-gTb1JW6SvJwPUul5Z8s2TPG0A8LWJ_9d_Nk6HDpMJbR2GRpqfyQ7-ks5/exec';
 
 const ORDEN_MESES = ['1','2','3','4','5','6','7','8','9','10','11','12','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -450,28 +453,38 @@ function encontrarValorColumna(fila, opcionesClave) {
 }
 
 // --- MOTOR DE ARRANQUE Y LOGIN ---
-function handleLogin() {
+async function handleLogin() {
   const user = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value.trim();
   const errorEl = document.getElementById('login-error');
   const loader = document.getElementById('login-loader');
-  
+
   errorEl.style.display = 'none';
-  
-  let valid = false;
-  if (user === 'admin' && pass === 'slep2026') valid = true;
-  else {
-    const rbdNum = parseInt(user, 10);
-    if (!isNaN(rbdNum) && pass === String((rbdNum * 2) + 30)) valid = true;
+  loader.style.display = 'block';
+
+  let auth;
+  try {
+    // Content-Type text/plain evita el preflight CORS (Apps Script no responde OPTIONS).
+    const res = await fetch(AUTH_ENDPOINT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ user, pass })
+    });
+    auth = await res.json();
+  } catch (e) {
+    loader.style.display = 'none';
+    errorEl.innerText = "Error validando credenciales. Intenta nuevamente.";
+    errorEl.style.display = 'block';
+    return;
   }
 
-  if (!valid) {
+  if (!auth.valid) {
+    loader.style.display = 'none';
     errorEl.innerText = "Credenciales incorrectas.";
     errorEl.style.display = 'block';
     return;
   }
 
-  loader.style.display = 'block';
   Papa.parse(GOOGLE_SHEETS_CSV_URL, {
     download: true,
     header: true,
@@ -534,6 +547,7 @@ function procesarDatos(rawData, user) {
       ensenanza: (encontrarValorColumna(row, ['enseñanza', 'ensenanza']) || "").toString().trim(),
       nivel: (encontrarValorColumna(row, ['nivel']) || "").toString().trim(),
       letra: (encontrarValorColumna(row, ['letra']) || "").toString().trim(),
+      comuna: (encontrarValorColumna(row, ['comuna']) || "").toString().trim(),
       asistencia: isNaN(asistencia) ? 0 : asistencia,
       matricula: matricula,
       cupos2026: cupos2026
@@ -581,7 +595,7 @@ function iniciarInterfaz() {
 }
 
 function configurarFiltros() {
-  const mapeo = { agno: 'f-agno', mes: 'f-mes', ensenanza: 'f-ensenanza', nivel: 'f-nivel', letra: 'f-letra', rbd_est: 'f-rbd' };
+  const mapeo = { agno: 'f-agno', mes: 'f-mes', ensenanza: 'f-ensenanza', nivel: 'f-nivel', letra: 'f-letra', comuna: 'f-comuna', rbd_est: 'f-rbd' };
   
   Object.keys(mapeo).forEach(key => {
     let valoresUnicos = [...new Set(DB_RAW.map(d => d[key]))].filter(Boolean);
@@ -629,7 +643,7 @@ function renderActiveFiltersTray() {
   if (!tray) return;
   tray.innerHTML = '';
   let hasFilters = false;
-  const etiquetas = { agno: 'AÑO', mes: 'MES', ensenanza: 'ENSEÑANZA', nivel: 'NIVEL', letra: 'LETRA', rbd_est: 'ESTABLECIMIENTO' };
+  const etiquetas = { agno: 'AÑO', mes: 'MES', ensenanza: 'ENSEÑANZA', nivel: 'NIVEL', letra: 'LETRA', comuna: 'COMUNA', rbd_est: 'ESTABLECIMIENTO' };
 
   Object.keys(ts).forEach(key => {
     if (!IS_ADMIN && key === 'rbd_est') return;
@@ -807,6 +821,7 @@ function actualizarDashboard() {
         ensenanza: getArr('ensenanza'),
         nivel: getArr('nivel'),
         letra: getArr('letra'),
+        comuna: getArr('comuna'),
         rbd_est: getArr('rbd_est')
       };
 
@@ -816,6 +831,7 @@ function actualizarDashboard() {
         if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
         if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
         if (f.letra.length && !f.letra.includes(d.letra)) return false;
+        if (f.comuna.length && !f.comuna.includes(d.comuna)) return false;
         if (f.rbd_est.length && !f.rbd_est.includes(d.rbd_est)) return false;
         return true;
       });
@@ -826,6 +842,7 @@ function actualizarDashboard() {
         if (f.ensenanza.length && !f.ensenanza.includes(d.ensenanza)) return false;
         if (f.nivel.length && !f.nivel.includes(d.nivel)) return false;
         if (f.letra.length && !f.letra.includes(d.letra)) return false;
+        if (f.comuna.length && !f.comuna.includes(d.comuna)) return false;
         return true;
       });
 
@@ -849,12 +866,15 @@ function actualizarDashboard() {
       }
 
       datosFiltrados.forEach(d => {
-        if (d.asistencia > 0) {
+        if (d.agno === ultimoAgno && d.asistencia > 0) {
             asisPonderadaSum += (d.asistencia * d.matricula);
             matTotalForAsis += d.matricula;
         }
         establecimientosUnicos.add(d.rbd_puro);
       });
+
+      const kpiAsisDescEl = document.getElementById('kpi-asistencia-desc');
+      if (kpiAsisDescEl) kpiAsisDescEl.innerText = ultimoAgno ? `Promedio exacto s/matrícula (${ultimoAgno})` : 'Promedio exacto s/matrícula';
 
       let matReal = 0;
       let aulasUnicas = new Set();
@@ -1091,25 +1111,49 @@ function renderAnalisisColegios(datosFiltrados) {
     const btnTodos = document.getElementById('btn-todos-colegios');
     if (btnTodos) btnTodos.innerText = `Seleccionar todos (${establecimientos.length})`;
 
-    // Las tablas siempre muestran TODOS los establecimientos (no dependen del selector de los gráficos)
-    // Heatmap: interpola rojo(0) -> amarillo(0.5) -> verde(1) según t (0..1)
-    const colorHeatmap = (t) => {
-        t = Math.max(0, Math.min(1, t));
-        return `hsl(${Math.round(t * 120)}, 65%, 38%)`;
-    };
+    // Tablas y gráficos dependen ambos de la selección del usuario (colegiosSeleccionados),
+    // igual criterio en toda la pestaña para que no se muestren datos "de más".
+    renderChipsColegios();
+    renderTablasColegios();
+    redibujarGraficosColegios();
+}
+
+// Heatmap: interpola rojo(0) -> amarillo(0.5) -> verde(1) según t (0..1)
+function colorHeatmapColegios(t) {
+    t = Math.max(0, Math.min(1, t));
+    return `hsl(${Math.round(t * 120)}, 65%, 38%)`;
+}
+
+// Redibuja las tablas de Asistencia y Matrícula usando solo los establecimientos
+// seleccionados en el comparador (misma selección que alimenta los gráficos).
+function renderTablasColegios() {
+    const wrapAsis = document.getElementById('tabla-colegios-asis-wrap');
+    const wrapMat = document.getElementById('tabla-colegios-mat-wrap');
+    if (!wrapAsis || !wrapMat) return;
+
+    const { meses, agrup } = ACC_COLEGIOS;
+    const establecimientos = [...colegiosSeleccionados].sort((a, b) => a.localeCompare(b, 'es'));
+
+    if (establecimientos.length === 0) {
+        const msg = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Selecciona uno o más establecimientos arriba para ver el detalle.</p>';
+        wrapAsis.innerHTML = msg;
+        wrapMat.innerHTML = msg;
+        return;
+    }
 
     // --- Tabla A: Asistencia mensual + Acumulado Anual (ponderado) ---
     // Heatmap por umbral fijo: 60% (rojo) a 100% (verde), igual escala que el resto del panel.
     let htmlAsis = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Acumulado Anual</th></tr></thead><tbody>';
     establecimientos.forEach(est => {
+        const filaAgrup = agrup[est] || {};
         let totalMat = 0, totalAsis = 0;
         let fila = `<tr><td>${est}</td>`;
         meses.forEach(mes => {
-            const c = agrup[est][mes];
+            const c = filaAgrup[mes] || { matSum: 0, asisSum: 0 };
             if (c.matSum > 0) {
                 const pct = c.asisSum / c.matSum;
                 const t = (pct - 0.60) / 0.40;
-                fila += `<td style="background:${colorHeatmap(t)}; color:#fff;">${(pct * 100).toFixed(1)}%</td>`;
+                fila += `<td style="background:${colorHeatmapColegios(t)}; color:#fff;">${(pct * 100).toFixed(1)}%</td>`;
             } else {
                 fila += `<td>—</td>`;
             }
@@ -1119,7 +1163,7 @@ function renderAnalisisColegios(datosFiltrados) {
         if (totalMat > 0) {
             const pctTotal = totalAsis / totalMat;
             const tTotal = (pctTotal - 0.60) / 0.40;
-            fila += `<td style="background:${colorHeatmap(tTotal)}; color:#fff;"><strong>${(pctTotal * 100).toFixed(1)}%</strong></td></tr>`;
+            fila += `<td style="background:${colorHeatmapColegios(tTotal)}; color:#fff;"><strong>${(pctTotal * 100).toFixed(1)}%</strong></td></tr>`;
         } else {
             fila += `<td><strong>—</strong></td></tr>`;
         }
@@ -1133,16 +1177,17 @@ function renderAnalisisColegios(datosFiltrados) {
     // (una matrícula global fija no tendría sentido entre un liceo de 500 y una escuela de 40).
     let htmlMat = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Promedio Anual</th></tr></thead><tbody>';
     establecimientos.forEach(est => {
-        const valoresFila = meses.map(mes => agrup[est][mes].matSum).filter(v => v > 0);
+        const filaAgrup = agrup[est] || {};
+        const valoresFila = meses.map(mes => (filaAgrup[mes] || {}).matSum || 0).filter(v => v > 0);
         const minFila = valoresFila.length ? Math.min(...valoresFila) : 0;
         const maxFila = valoresFila.length ? Math.max(...valoresFila) : 0;
         let sumaMat = 0, mesesConDato = 0;
         let fila = `<tr><td>${est}</td>`;
         meses.forEach(mes => {
-            const c = agrup[est][mes];
+            const c = filaAgrup[mes] || { matSum: 0 };
             if (c.matSum > 0) {
                 const t = maxFila > minFila ? (c.matSum - minFila) / (maxFila - minFila) : 0.5;
-                fila += `<td style="background:${colorHeatmap(t)}; color:#fff;">${c.matSum.toLocaleString('es-CL')}</td>`;
+                fila += `<td style="background:${colorHeatmapColegios(t)}; color:#fff;">${c.matSum.toLocaleString('es-CL')}</td>`;
                 sumaMat += c.matSum; mesesConDato++;
             } else {
                 fila += `<td>—</td>`;
@@ -1153,11 +1198,6 @@ function renderAnalisisColegios(datosFiltrados) {
     });
     htmlMat += '</tbody></table>';
     wrapMat.innerHTML = htmlMat;
-
-
-    // Los gráficos dependen de la selección del usuario, no de "todos" los establecimientos
-    renderChipsColegios();
-    redibujarGraficosColegios();
 }
 
 // Normaliza texto para búsqueda insensible a tildes/mayúsculas
@@ -1194,24 +1234,28 @@ function agregarColegio(est) {
     const cont = document.getElementById('sugerencias-colegios');
     if (cont) { cont.style.display = 'none'; cont.innerHTML = ''; }
     renderChipsColegios();
+    renderTablasColegios();
     redibujarGraficosColegios();
 }
 
 function quitarColegio(est) {
     colegiosSeleccionados.delete(est);
     renderChipsColegios();
+    renderTablasColegios();
     redibujarGraficosColegios();
 }
 
 function limpiarSeleccionColegios() {
     colegiosSeleccionados.clear();
     renderChipsColegios();
+    renderTablasColegios();
     redibujarGraficosColegios();
 }
 
 function seleccionarTodosColegios() {
     ACC_COLEGIOS.establecimientos.forEach(est => colegiosSeleccionados.add(est));
     renderChipsColegios();
+    renderTablasColegios();
     redibujarGraficosColegios();
 }
 
@@ -1381,15 +1425,42 @@ function initCharts() {
   toggleTheme(); 
 }
 
+// Tope de nombres en la leyenda de descarga: con selecciones grandes (ej. "Seleccionar
+// todos" con 79 colegios) una leyenda sin límite podría desbordar la imagen exportada.
+const MAX_LEYENDA_DESCARGA = 40;
+
 function descargarGrafico(btn) {
   const card = btn.closest('.chart-card');
-  btn.style.opacity = '0'; 
+  btn.style.opacity = '0';
   const titleEl = card.querySelector('.chart-title');
   let fileName = titleEl ? titleEl.innerText.replace(/\n/g, '_').replace(/ /g, '_') + '.png' : 'Grafico.png';
   const isDark = document.body.classList.contains('dark-theme');
+
+  // Los gráficos de "Análisis por Colegio" ocultan la leyenda de Chart.js en pantalla
+  // (demasiadas líneas la saturan), así que al descargar se arma una leyenda propia,
+  // en filas (flex-wrap) en vez de una columna vertical, para que el alto no se dispare.
+  let legendTemp = null;
+  const canvasColegios = card.querySelector('#chart-colegios-asis, #chart-colegios-mat');
+  if (canvasColegios && canvasColegios.style.display !== 'none') {
+    const seleccion = [...colegiosSeleccionados].sort((a, b) => a.localeCompare(b, 'es'));
+    const visibles = seleccion.slice(0, MAX_LEYENDA_DESCARGA);
+    const restantes = seleccion.length - visibles.length;
+    const textColor = isDark ? '#e6edf3' : '#24292f';
+
+    legendTemp = document.createElement('div');
+    legendTemp.style.cssText = 'display:flex; flex-wrap:wrap; gap:0.35rem 1rem; padding-top:0.9rem; margin-top:0.75rem; border-top:1px solid var(--border);';
+    legendTemp.innerHTML = visibles.map(est => {
+      const color = colorEstablecimientoPorNombre(est);
+      return `<span style="display:flex; align-items:center; gap:0.35rem; font-size:0.68rem; color:${textColor}; white-space:nowrap;"><span style="width:8px; height:8px; border-radius:50%; background:${color}; flex-shrink:0;"></span>${est}</span>`;
+    }).join('') + (restantes > 0 ? `<span style="font-size:0.68rem; color:${textColor}; opacity:0.7;">+${restantes} más</span>` : '');
+
+    card.appendChild(legendTemp);
+  }
+
   html2canvas(card, { backgroundColor: isDark ? '#161b22' : '#ffffff', scale: 2 }).then(canvas => {
     const link = document.createElement('a'); link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
-    btn.style.opacity = ''; 
+    btn.style.opacity = '';
+    if (legendTemp) legendTemp.remove();
   });
 }
 </script>
