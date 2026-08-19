@@ -340,7 +340,7 @@
         <button class="btn-download" onclick="exportarTablaCSV('tabla-cobertura-wrap', 'cobertura_matricula')" title="Exportar CSV">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
-        <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span id="tabla-cobertura-desc">Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)</span></div></div>
+        <div class="chart-header"><div class="chart-title">Cobertura de Matrícula por Establecimiento<span id="tabla-cobertura-desc">Matrícula vs. Cupos disponibles</span></div></div>
         <div id="tabla-cobertura-wrap"></div>
       </div>
     </div>
@@ -705,7 +705,7 @@ function renderTablaCobertura(datosFiltrados) {
   const cuposDescEl = document.getElementById('kpi-cupos-desc');
   if (cuposDescEl) cuposDescEl.innerText = cupoLabel ? `Total disponible (${cupoLabel})` : 'Total disponible';
   const tablaCobDescEl = document.getElementById('tabla-cobertura-desc');
-  if (tablaCobDescEl) tablaCobDescEl.innerText = (cupoLabel ? cupoLabel + ' · ' : '') + 'Matrícula vs. Cupos disponibles (haz clic en un establecimiento para ver el detalle por curso)';
+  if (tablaCobDescEl) tablaCobDescEl.innerText = (cupoLabel ? cupoLabel + ' · ' : '') + 'Matrícula vs. Cupos disponibles';
 
   let totalMat = 0, totalCupos = 0;
   const porEst = {};
