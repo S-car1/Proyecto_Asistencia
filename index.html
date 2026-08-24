@@ -135,10 +135,12 @@
     .tabla-cob td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
     .tabla-cob tr.fila-est { cursor: pointer; }
     .tabla-cob tr.fila-est:hover { background: var(--surface-2); }
+    .tabla-cob tr.fila-curso-header { cursor: pointer; }
     .tabla-cob tr.fila-curso td { background: var(--surface-2); font-size: 0.8rem; color: var(--text-muted); }
     .tabla-cob tr.fila-curso.oculto { display: none; }
+    .tabla-cob tr.fila-detalle.oculto2 { display: none; }
     .tabla-cob .chevron { display: inline-block; transition: transform 0.2s; margin-right: 0.5rem; color: var(--text-muted); }
-    .tabla-cob tr.fila-est.abierta .chevron { transform: rotate(90deg); }
+    .tabla-cob tr.abierta .chevron { transform: rotate(90deg); }
     .badge-cob { font-family: var(--mono); font-weight: 700; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
     .variacion-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); justify-content: start; gap: 1rem; padding: 0.5rem 0 0.25rem 0; }
     .variacion-item .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
@@ -687,6 +689,11 @@ function toggleFilaCobertura(idx) {
   document.getElementById('fila-est-' + idx).classList.toggle('abierta');
 }
 
+function toggleDetalleCurso(idx, j) {
+  document.querySelectorAll('.fila-detalle-' + idx + '-' + j).forEach(tr => tr.classList.toggle('oculto2'));
+  document.getElementById('fila-curso-header-' + idx + '-' + j).classList.toggle('abierta');
+}
+
 function renderTablaCobertura(datosFiltrados) {
   const wrap = document.getElementById('tabla-cobertura-wrap');
   if (!wrap) return;
@@ -714,14 +721,20 @@ function renderTablaCobertura(datosFiltrados) {
     if (!porEst[d.rbd_est]) porEst[d.rbd_est] = { matricula: 0, cupos: 0, cursos: {} };
     porEst[d.rbd_est].matricula += d.matricula;
     porEst[d.rbd_est].cupos += d.cupos2026;
-    // Se incluye el código de Enseñanza en la llave: un mismo Nivel+Letra puede
-    // corresponder a cursos distintos (ej. Técnico-Profesional Comercial vs
-    // Industrial), y sumarlos bajo una sola fila mezclaría matrícula/cupos de
-    // programas distintos.
-    const cKey = `${d.nivel} ${d.letra}${d.ensenanza ? ' (' + d.ensenanza + ')' : ''}`.trim();
-    if (!porEst[d.rbd_est].cursos[cKey]) porEst[d.rbd_est].cursos[cKey] = { matricula: 0, cupos: 0 };
-    porEst[d.rbd_est].cursos[cKey].matricula += d.matricula;
-    porEst[d.rbd_est].cursos[cKey].cupos += d.cupos2026;
+    // Un mismo Nivel+Letra puede corresponder a más de un curso real si
+    // difieren en Enseñanza (ej. Técnico-Profesional Comercial vs Industrial).
+    // Se agrupa primero por Nivel+Letra; el desglose por Enseñanza se arma
+    // igual, pero solo se muestra como fila desplegable aparte cuando hay
+    // más de un código detrás (ver render más abajo).
+    const cKey = `${d.nivel} ${d.letra}`.trim();
+    if (!porEst[d.rbd_est].cursos[cKey]) porEst[d.rbd_est].cursos[cKey] = { matricula: 0, cupos: 0, detalles: {} };
+    const curso = porEst[d.rbd_est].cursos[cKey];
+    curso.matricula += d.matricula;
+    curso.cupos += d.cupos2026;
+    const detKey = d.ensenanza || '—';
+    if (!curso.detalles[detKey]) curso.detalles[detKey] = { matricula: 0, cupos: 0 };
+    curso.detalles[detKey].matricula += d.matricula;
+    curso.detalles[detKey].cupos += d.cupos2026;
   });
 
   document.getElementById('kpi-cupos').innerText = totalCupos > 0 ? totalCupos.toLocaleString('es-CL') : '—';
@@ -761,18 +774,48 @@ function renderTablaCobertura(datosFiltrados) {
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
 
-    cursos.forEach(cKey => {
+    cursos.forEach((cKey, j) => {
       const c = e.cursos[cKey];
       const cPct = c.cupos > 0 ? (c.matricula / c.cupos * 100) : null;
       const cCob = c.matricula - c.cupos;
       const cColor = colorCobertura(cPct);
-      html += `<tr class="fila-curso oculto fila-curso-${idx}">
-        <td style="padding-left:2rem;">${cKey}</td>
+      const detalles = Object.keys(c.detalles);
+
+      // Caso normal: Nivel+Letra corresponde a un solo curso real, se muestra igual que siempre.
+      if (detalles.length <= 1) {
+        html += `<tr class="fila-curso oculto fila-curso-${idx}">
+          <td style="padding-left:2rem;">${cKey}</td>
+          <td>${c.matricula.toLocaleString('es-CL')}</td>
+          <td>${c.cupos.toLocaleString('es-CL')}</td>
+          <td>${cCob >= 0 ? '+' : ''}${cCob.toLocaleString('es-CL')}</td>
+          <td><span class="badge-cob" style="color:${cColor}">${cPct !== null ? cPct.toFixed(1) + '%' : '—'}</span></td>
+        </tr>`;
+        return;
+      }
+
+      // Caso ambiguo: más de un curso real comparte Nivel+Letra. La fila queda
+      // desplegable y muestra el desglose por código de Enseñanza al hacer clic.
+      html += `<tr class="fila-curso fila-curso-header oculto fila-curso-${idx}" id="fila-curso-header-${idx}-${j}" onclick="toggleDetalleCurso(${idx}, ${j})">
+        <td style="padding-left:2rem;"><span class="chevron">▶</span>${cKey}</td>
         <td>${c.matricula.toLocaleString('es-CL')}</td>
         <td>${c.cupos.toLocaleString('es-CL')}</td>
         <td>${cCob >= 0 ? '+' : ''}${cCob.toLocaleString('es-CL')}</td>
         <td><span class="badge-cob" style="color:${cColor}">${cPct !== null ? cPct.toFixed(1) + '%' : '—'}</span></td>
       </tr>`;
+
+      detalles.forEach(detKey => {
+        const d = c.detalles[detKey];
+        const dPct = d.cupos > 0 ? (d.matricula / d.cupos * 100) : null;
+        const dCob = d.matricula - d.cupos;
+        const dColor = colorCobertura(dPct);
+        html += `<tr class="fila-curso fila-detalle oculto oculto2 fila-curso-${idx} fila-detalle-${idx}-${j}">
+          <td style="padding-left:3.5rem;">${cKey} (${detKey})</td>
+          <td>${d.matricula.toLocaleString('es-CL')}</td>
+          <td>${d.cupos.toLocaleString('es-CL')}</td>
+          <td>${dCob >= 0 ? '+' : ''}${dCob.toLocaleString('es-CL')}</td>
+          <td><span class="badge-cob" style="color:${dColor}">${dPct !== null ? dPct.toFixed(1) + '%' : '—'}</span></td>
+        </tr>`;
+      });
     });
   });
 
