@@ -329,7 +329,7 @@
       <div class="kpi" style="--kpi-c: var(--purple)">
         <div class="kpi-label">Cobertura</div>
         <div class="kpi-val" id="kpi-cobertura">—</div>
-        <div class="kpi-desc">Matrícula − Cupos 2026</div>
+        <div class="kpi-desc">Cupos 2026 − Matrícula</div>
       </div>
       <div class="kpi" style="--kpi-c: var(--total)">
         <div class="kpi-label">% Cobertura Promedio</div>
@@ -738,7 +738,7 @@ function renderTablaCobertura(datosFiltrados) {
   });
 
   document.getElementById('kpi-cupos').innerText = totalCupos > 0 ? totalCupos.toLocaleString('es-CL') : '—';
-  const cobTotal = totalMat - totalCupos;
+  const cobTotal = totalCupos - totalMat;
   document.getElementById('kpi-cobertura').innerText = totalCupos > 0 ? (cobTotal >= 0 ? '+' : '') + cobTotal.toLocaleString('es-CL') : '—';
   document.getElementById('kpi-pct-cobertura').innerText = totalCupos > 0 ? (totalMat / totalCupos * 100).toFixed(1) + '%' : '—';
 
@@ -758,7 +758,7 @@ function renderTablaCobertura(datosFiltrados) {
   establecimientos.forEach((est, idx) => {
     const e = porEst[est];
     const pct = e.cupos > 0 ? (e.matricula / e.cupos * 100) : null;
-    const cob = e.matricula - e.cupos;
+    const cob = e.cupos - e.matricula;
     const color = colorCobertura(pct);
     html += `<tr class="fila-est" id="fila-est-${idx}" onclick="toggleFilaCobertura(${idx})">
       <td><span class="chevron">▶</span>${est}</td>
@@ -777,7 +777,7 @@ function renderTablaCobertura(datosFiltrados) {
     cursos.forEach((cKey, j) => {
       const c = e.cursos[cKey];
       const cPct = c.cupos > 0 ? (c.matricula / c.cupos * 100) : null;
-      const cCob = c.matricula - c.cupos;
+      const cCob = c.cupos - c.matricula;
       const cColor = colorCobertura(cPct);
       const detalles = Object.keys(c.detalles);
 
@@ -806,7 +806,7 @@ function renderTablaCobertura(datosFiltrados) {
       detalles.forEach(detKey => {
         const d = c.detalles[detKey];
         const dPct = d.cupos > 0 ? (d.matricula / d.cupos * 100) : null;
-        const dCob = d.matricula - d.cupos;
+        const dCob = d.cupos - d.matricula;
         const dColor = colorCobertura(dPct);
         html += `<tr class="fila-curso fila-detalle oculto oculto2 fila-curso-${idx} fila-detalle-${idx}-${j}">
           <td style="padding-left:3.5rem;">${cKey} (${detKey})</td>
