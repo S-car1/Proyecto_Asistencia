@@ -714,7 +714,11 @@ function renderTablaCobertura(datosFiltrados) {
     if (!porEst[d.rbd_est]) porEst[d.rbd_est] = { matricula: 0, cupos: 0, cursos: {} };
     porEst[d.rbd_est].matricula += d.matricula;
     porEst[d.rbd_est].cupos += d.cupos2026;
-    const cKey = `${d.nivel} ${d.letra}`.trim();
+    // Se incluye el código de Enseñanza en la llave: un mismo Nivel+Letra puede
+    // corresponder a cursos distintos (ej. Técnico-Profesional Comercial vs
+    // Industrial), y sumarlos bajo una sola fila mezclaría matrícula/cupos de
+    // programas distintos.
+    const cKey = `${d.nivel} ${d.letra}${d.ensenanza ? ' (' + d.ensenanza + ')' : ''}`.trim();
     if (!porEst[d.rbd_est].cursos[cKey]) porEst[d.rbd_est].cursos[cKey] = { matricula: 0, cupos: 0 };
     porEst[d.rbd_est].cursos[cKey].matricula += d.matricula;
     porEst[d.rbd_est].cursos[cKey].cupos += d.cupos2026;
