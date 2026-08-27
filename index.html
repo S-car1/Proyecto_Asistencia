@@ -1111,6 +1111,8 @@ let ACC_COLEGIOS = { meses: [], establecimientos: [], agrup: {} };
 // Orden activo de la tabla de Asistencia por Establecimiento: 'est' (RBD), un mes puntual,
 // o 'total' (Acumulado Anual). dir: 1 ascendente, -1 descendente.
 let sortColegiosAsis = { key: 'est', dir: 1 };
+// Mismo esquema para la tabla de Matrícula ('total' = Promedio Anual).
+let sortColegiosMat = { key: 'est', dir: 1 };
 
 function sortColegiosAsisPor(key) {
     if (sortColegiosAsis.key === key) {
@@ -1118,6 +1120,16 @@ function sortColegiosAsisPor(key) {
     } else {
         sortColegiosAsis.key = key;
         sortColegiosAsis.dir = -1; // primer clic en una columna nueva: mayor a menor
+    }
+    renderTablasColegios();
+}
+
+function sortColegiosMatPor(key) {
+    if (sortColegiosMat.key === key) {
+        sortColegiosMat.dir *= -1;
+    } else {
+        sortColegiosMat.key = key;
+        sortColegiosMat.dir = -1;
     }
     renderTablasColegios();
 }
@@ -1273,8 +1285,34 @@ function renderTablasColegios() {
     // --- Tabla B: Matrícula mensual + Promedio Anual (aritmético) ---
     // Heatmap relativo a cada fila: verde = el mes más alto de ESE colegio, rojo = el más bajo
     // (una matrícula global fija no tendría sentido entre un liceo de 500 y una escuela de 40).
-    let htmlMat = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Promedio Anual</th></tr></thead><tbody>';
-    establecimientos.forEach(est => {
+    // Valor de matrícula de un establecimiento para una columna dada, usado solo para
+    // ordenar; null si no hay dato ese mes/promedio (se ordena siempre al final).
+    const valorOrdenMat = (est, key) => {
+        const filaAgrup = agrup[est] || {};
+        if (key === 'total') {
+            const valores = meses.map(mes => (filaAgrup[mes] || {}).matSum || 0).filter(v => v > 0);
+            return valores.length ? valores.reduce((s, v) => s + v, 0) / valores.length : null;
+        }
+        const v = (filaAgrup[key] || {}).matSum || 0;
+        return v > 0 ? v : null;
+    };
+
+    const establecimientosMat = [...establecimientos].sort((a, b) => {
+        if (sortColegiosMat.key === 'est') return sortColegiosMat.dir * compararEstablecimientos(a, b);
+        const va = valorOrdenMat(a, sortColegiosMat.key), vb = valorOrdenMat(b, sortColegiosMat.key);
+        if (va === null && vb === null) return 0;
+        if (va === null) return 1;
+        if (vb === null) return -1;
+        return sortColegiosMat.dir * (va - vb);
+    });
+
+    const flechaMat = key => sortColegiosMat.key === key ? (sortColegiosMat.dir === 1 ? ' ▲' : ' ▼') : '';
+    let htmlMat = '<table class="tabla-cob"><thead><tr>'
+        + `<th class="th-sort" onclick="sortColegiosMatPor('est')">Establecimiento${flechaMat('est')}</th>`
+        + meses.map(m => `<th class="th-sort" onclick="sortColegiosMatPor('${m}')">${m}${flechaMat(m)}</th>`).join('')
+        + `<th class="th-sort" onclick="sortColegiosMatPor('total')">Promedio Anual${flechaMat('total')}</th>`
+        + '</tr></thead><tbody>';
+    establecimientosMat.forEach(est => {
         const filaAgrup = agrup[est] || {};
         const valoresFila = meses.map(mes => (filaAgrup[mes] || {}).matSum || 0).filter(v => v > 0);
         const minFila = valoresFila.length ? Math.min(...valoresFila) : 0;
