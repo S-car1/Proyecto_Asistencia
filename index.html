@@ -132,6 +132,8 @@
 
     .tabla-cob { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .tabla-cob th { text-align: left; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
+    .tabla-cob th.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+    .tabla-cob th.th-sort:hover { color: var(--text); }
     .tabla-cob td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
     .tabla-cob tr.fila-est { cursor: pointer; }
     .tabla-cob tr.fila-est:hover { background: var(--surface-2); }
@@ -1106,6 +1108,28 @@ let colegiosSeleccionados = new Set();
 // Caché del último cálculo (meses/establecimientos/agrupación), para que agregar o quitar
 // un colegio del selector solo redibuje, sin tener que refiltrar toda la base de nuevo.
 let ACC_COLEGIOS = { meses: [], establecimientos: [], agrup: {} };
+// Orden activo de la tabla de Asistencia por Establecimiento: 'est' (RBD), un mes puntual,
+// o 'total' (Acumulado Anual). dir: 1 ascendente, -1 descendente.
+let sortColegiosAsis = { key: 'est', dir: 1 };
+
+function sortColegiosAsisPor(key) {
+    if (sortColegiosAsis.key === key) {
+        sortColegiosAsis.dir *= -1;
+    } else {
+        sortColegiosAsis.key = key;
+        sortColegiosAsis.dir = -1; // primer clic en una columna nueva: mayor a menor
+    }
+    renderTablasColegios();
+}
+
+// RBD numérico primero (10542 antes que 9583 como número, no como texto), y si empatara,
+// alfabético como respaldo.
+function compararEstablecimientos(a, b) {
+    const ra = parseInt((a.match(/^\d+/) || ['0'])[0], 10);
+    const rb = parseInt((b.match(/^\d+/) || ['0'])[0], 10);
+    if (ra !== rb) return ra - rb;
+    return a.localeCompare(b, 'es');
+}
 
 function colorEstablecimientoPorNombre(est) {
     const idx = ACC_COLEGIOS.establecimientos.indexOf(est);
@@ -1179,7 +1203,7 @@ function renderTablasColegios() {
     if (!wrapAsis || !wrapMat) return;
 
     const { meses, agrup } = ACC_COLEGIOS;
-    const establecimientos = [...colegiosSeleccionados].sort((a, b) => a.localeCompare(b, 'es'));
+    const establecimientos = [...colegiosSeleccionados].sort(compararEstablecimientos);
 
     if (establecimientos.length === 0) {
         const msg = '<p style="padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">Selecciona uno o más establecimientos arriba para ver el detalle.</p>';
@@ -1190,8 +1214,35 @@ function renderTablasColegios() {
 
     // --- Tabla A: Asistencia mensual + Acumulado Anual (ponderado) ---
     // Heatmap por umbral fijo: 60% (rojo) a 100% (verde), igual escala que el resto del panel.
-    let htmlAsis = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th>' + meses.map(m => `<th>${m}</th>`).join('') + '<th>Acumulado Anual</th></tr></thead><tbody>';
-    establecimientos.forEach(est => {
+    // Valor de asistencia (% ponderado) de un establecimiento para una columna dada, usado
+    // solo para ordenar; null si no hay matrícula ese mes/total (se ordena siempre al final).
+    const valorOrdenAsis = (est, key) => {
+        const filaAgrup = agrup[est] || {};
+        if (key === 'total') {
+            let mat = 0, asis = 0;
+            meses.forEach(mes => { const c = filaAgrup[mes]; if (c) { mat += c.matSum; asis += c.asisSum; } });
+            return mat > 0 ? asis / mat : null;
+        }
+        const c = filaAgrup[key];
+        return c && c.matSum > 0 ? c.asisSum / c.matSum : null;
+    };
+
+    const establecimientosAsis = [...establecimientos].sort((a, b) => {
+        if (sortColegiosAsis.key === 'est') return sortColegiosAsis.dir * compararEstablecimientos(a, b);
+        const va = valorOrdenAsis(a, sortColegiosAsis.key), vb = valorOrdenAsis(b, sortColegiosAsis.key);
+        if (va === null && vb === null) return 0;
+        if (va === null) return 1;
+        if (vb === null) return -1;
+        return sortColegiosAsis.dir * (va - vb);
+    });
+
+    const flechaAsis = key => sortColegiosAsis.key === key ? (sortColegiosAsis.dir === 1 ? ' ▲' : ' ▼') : '';
+    let htmlAsis = '<table class="tabla-cob"><thead><tr>'
+        + `<th class="th-sort" onclick="sortColegiosAsisPor('est')">Establecimiento${flechaAsis('est')}</th>`
+        + meses.map(m => `<th class="th-sort" onclick="sortColegiosAsisPor('${m}')">${m}${flechaAsis(m)}</th>`).join('')
+        + `<th class="th-sort" onclick="sortColegiosAsisPor('total')">Acumulado Anual${flechaAsis('total')}</th>`
+        + '</tr></thead><tbody>';
+    establecimientosAsis.forEach(est => {
         const filaAgrup = agrup[est] || {};
         let totalMat = 0, totalAsis = 0;
         let fila = `<tr><td>${est}</td>`;
