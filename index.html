@@ -159,6 +159,10 @@
     .btn-download { position: absolute; top: 1.25rem; right: 1.4rem; background: transparent; border: none; color: var(--text-muted); width: 20px; height: 20px; cursor: pointer; opacity: 0; transition: 0.3s; z-index: 50; padding: 0; }
     .btn-download:hover { color: var(--leng); transform: scale(1.1); }
     .chart-card:hover .btn-download { opacity: 1; }
+
+    .btn-mostrar-todo { position: absolute; top: 1.3rem; right: 3.4rem; background: transparent; border: none; color: var(--text-muted); font-family: var(--font); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer; opacity: 0; transition: 0.3s; z-index: 50; padding: 0; }
+    .btn-mostrar-todo:hover { color: var(--leng); }
+    .chart-card:hover .btn-mostrar-todo { opacity: 1; }
   </style>
 </head>
 <body>
@@ -267,6 +271,7 @@
     <div class="chart-section-label">Asistencia</div>
     <div class="charts-grid">
       <div class="chart-card">
+        <button class="btn-mostrar-todo" onclick="resetChartSeries('asis-evo')" title="Reactivar todas las series ocultas por la leyenda">Mostrar todo</button>
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
@@ -275,6 +280,7 @@
       </div>
 
       <div class="chart-card">
+        <button class="btn-mostrar-todo" onclick="resetChartSeries('asis-var')" title="Reactivar todas las series ocultas por la leyenda">Mostrar todo</button>
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
@@ -286,6 +292,7 @@
     <div class="chart-section-label" style="margin-top: 1.5rem;">Matrícula</div>
     <div class="charts-grid">
       <div class="chart-card full-width">
+        <button class="btn-mostrar-todo" onclick="resetChartSeries('mat-evo')" title="Reactivar todas las series ocultas por la leyenda">Mostrar todo</button>
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
@@ -298,14 +305,16 @@
   <div id="tab-niveles" class="tab-content" style="display:none;">
     <div class="charts-grid">
       <div class="chart-card">
+        <button class="btn-mostrar-todo" onclick="resetChartSeries('asis-ensenanza')" title="Reactivar todas las series ocultas por la leyenda">Mostrar todo</button>
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
         <div class="chart-header"><div class="chart-title">Brechas por Etapa<span>Asistencia por Tipo de Enseñanza</span></div></div>
         <div class="chart-wrap"><canvas id="chart-asis-ensenanza"></canvas></div>
       </div>
-      
+
       <div class="chart-card">
+        <button class="btn-mostrar-todo" onclick="resetChartSeries('asis-nivel')" title="Reactivar todas las series ocultas por la leyenda">Mostrar todo</button>
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
@@ -355,7 +364,7 @@
       <div class="chart-header"><div class="chart-title">Selección de Establecimientos<span>Busca y agrega colegios para comparar en los gráficos (mínimo 2)</span></div></div>
       <div class="selector-colegios">
         <div class="buscador-colegios-wrap">
-          <input type="text" id="buscador-colegios" class="input-buscador" placeholder="Buscar establecimiento por nombre o RBD..." autocomplete="off" oninput="filtrarSugerenciasColegios()" onfocus="filtrarSugerenciasColegios()">
+          <input type="text" id="buscador-colegios" class="input-buscador" placeholder="Buscar establecimiento por nombre o RBD..." autocomplete="off" oninput="filtrarSugerenciasColegiosDebounced()" onfocus="filtrarSugerenciasColegios()">
           <div id="sugerencias-colegios" class="sugerencias-colegios" style="display:none;"></div>
         </div>
         <button type="button" class="btn-limpiar-colegios" id="btn-todos-colegios" onclick="seleccionarTodosColegios()">Seleccionar todos</button>
@@ -366,6 +375,7 @@
 
     <div class="charts-grid">
       <div class="chart-card full-width">
+        <button class="btn-mostrar-todo" onclick="resetChartSeries('colegios-asis')" title="Reactivar todas las series ocultas por la leyenda">Mostrar todo</button>
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
@@ -377,6 +387,7 @@
       </div>
 
       <div class="chart-card full-width">
+        <button class="btn-mostrar-todo" onclick="resetChartSeries('colegios-mat')" title="Reactivar todas las series ocultas por la leyenda">Mostrar todo</button>
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
@@ -431,6 +442,23 @@ function ordenMes(mesStr) {
 }
 const ORDEN_ENSENANZA = ['Educación Parvularia', 'Enseñanza Básica', 'Enseñanza Media', 'Educación de Adultos', 'Educación Especial'];
 const ORDEN_NIVEL = ['Sala Cuna', 'Medio Menor', 'Medio Mayor', '1er Nivel de Transición', '2do Nivel de Transición', '1° básico', '2° básico', '3° básico', '4° básico', '5° básico', '6° básico', '7° básico', '8° básico', '1° medio', '2° medio', '3° medio', '4° medio'];
+
+// Retrasa la ejecución de fn hasta que pasen `wait` ms sin nuevas llamadas.
+// Evita recalcular/re-renderizar el dashboard completo en cada tecla o clic
+// cuando el usuario está seleccionando varias opciones rápido en los filtros.
+function debounce(fn, wait) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+// Versión con debounce de actualizarDashboard, para los filtros (tom-select dispara
+// onChange por cada opción marcada/desmarcada con el plugin checkbox_options; sin esto,
+// seleccionar varias opciones rápido recalcularía todo el dashboard una vez por clic).
+// actualizarDashboard es una function declaration (hoisted), así que puede referenciarse aquí.
+const actualizarDashboardDebounced = debounce(() => actualizarDashboard(), 150);
 
 let DB_RAW = [];
 let ts = {};
@@ -629,7 +657,7 @@ function configurarFiltros() {
       labelField: 'title',
       searchField: 'title',
       options: valoresUnicos.map(v => ({ id: v, title: v })),
-      onChange: () => actualizarDashboard()
+      onChange: () => actualizarDashboardDebounced()
     });
   });
 
@@ -696,9 +724,34 @@ function toggleDetalleCurso(idx, j) {
   document.getElementById('fila-curso-header-' + idx + '-' + j).classList.toggle('abierta');
 }
 
+// Orden activo de la tabla de Cobertura de Matrícula: 'est' (nombre), 'matricula', 'cupos',
+// 'cobertura' o 'pct'. dir: 1 ascendente, -1 descendente. Se cachean los últimos datos
+// filtrados (ACC_COBERTURA) para que un clic en un encabezado solo reordene, sin refiltrar.
+let sortCobertura = { key: 'pct', dir: -1 };
+let ACC_COBERTURA = { datosFiltrados: [] };
+
+function sortCoberturaPor(key) {
+  if (sortCobertura.key === key) {
+    sortCobertura.dir *= -1;
+  } else {
+    sortCobertura.key = key;
+    sortCobertura.dir = key === 'est' ? 1 : -1; // primer clic en columna numérica: mayor a menor
+  }
+  renderTablaCobertura(ACC_COBERTURA.datosFiltrados);
+}
+
+function valorSortCobertura(e, key) {
+  if (key === 'matricula') return e.matricula;
+  if (key === 'cupos') return e.cupos;
+  if (key === 'cobertura') return e.cupos - e.matricula;
+  if (key === 'pct') return e.cupos > 0 ? e.matricula / e.cupos : null;
+  return null;
+}
+
 function renderTablaCobertura(datosFiltrados) {
   const wrap = document.getElementById('tabla-cobertura-wrap');
   if (!wrap) return;
+  ACC_COBERTURA.datosFiltrados = datosFiltrados;
 
   const datosCob = datosFiltrados.filter(d => d.cupos2026 !== null);
 
@@ -750,12 +803,23 @@ function renderTablaCobertura(datosFiltrados) {
   }
 
   const establecimientos = Object.keys(porEst).sort((a, b) => {
-    const pa = porEst[a].cupos > 0 ? porEst[a].matricula / porEst[a].cupos : 0;
-    const pb = porEst[b].cupos > 0 ? porEst[b].matricula / porEst[b].cupos : 0;
-    return pb - pa;
+    if (sortCobertura.key === 'est') return sortCobertura.dir * a.localeCompare(b, 'es');
+    const va = valorSortCobertura(porEst[a], sortCobertura.key);
+    const vb = valorSortCobertura(porEst[b], sortCobertura.key);
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    return sortCobertura.dir * (va - vb);
   });
 
-  let html = '<table class="tabla-cob"><thead><tr><th>Establecimiento</th><th>Matrícula</th><th>Cupos 2026</th><th>Cobertura</th><th>% Cobertura</th></tr></thead><tbody>';
+  const flechaCobertura = key => sortCobertura.key === key ? (sortCobertura.dir === 1 ? ' ▲' : ' ▼') : '';
+  let html = '<table class="tabla-cob"><thead><tr>'
+    + `<th class="th-sort" onclick="sortCoberturaPor('est')">Establecimiento${flechaCobertura('est')}</th>`
+    + `<th class="th-sort" onclick="sortCoberturaPor('matricula')">Matrícula${flechaCobertura('matricula')}</th>`
+    + `<th class="th-sort" onclick="sortCoberturaPor('cupos')">Cupos 2026${flechaCobertura('cupos')}</th>`
+    + `<th class="th-sort" onclick="sortCoberturaPor('cobertura')">Cobertura${flechaCobertura('cobertura')}</th>`
+    + `<th class="th-sort" onclick="sortCoberturaPor('pct')">% Cobertura${flechaCobertura('pct')}</th>`
+    + '</tr></thead><tbody>';
 
   establecimientos.forEach((est, idx) => {
     const e = porEst[est];
@@ -1362,6 +1426,7 @@ function filtrarSugerenciasColegios() {
     }
     cont.style.display = 'block';
 }
+const filtrarSugerenciasColegiosDebounced = debounce(filtrarSugerenciasColegios, 150);
 
 function agregarColegio(est) {
     colegiosSeleccionados.add(est);
@@ -1495,6 +1560,16 @@ function showTab(tabId, e) {
 }
 
 function toggleSlep() { SHOW_SLEP = document.getElementById('slep-toggle').checked; document.getElementById('slep-label-text').style.color = SHOW_SLEP ? 'var(--leng)' : 'var(--text-muted)'; actualizarDashboard(); }
+
+// Botón "Mostrar todo" de cada gráfico: reactiva todas las series que el usuario haya
+// ocultado con un clic en la leyenda de Chart.js, sin tocar el clic simple nativo
+// (ese sigue ocultando/mostrando una serie a la vez, como siempre).
+function resetChartSeries(chartKey) {
+  const chart = charts[chartKey];
+  if (!chart) return;
+  chart.data.datasets.forEach((_, i) => chart.setDatasetVisibility(i, true));
+  chart.update();
+}
 
 function initCharts() {
   // Requerimiento 1: Zoom de Asistencia fijado entre 60% (0.6) y 100% (1.0)
