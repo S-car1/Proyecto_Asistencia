@@ -6,9 +6,11 @@
   <title>Dashboard Asistencia y Matrícula · SLEP Del Pino</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
   
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-  
+  <!-- Tipografía oficial del Kit Digital SLEP (gobCL), servida desde /fonts -->
+  <link rel="preload" href="fonts/gobCL_Regular.otf" as="font" type="font/otf" crossorigin />
+  <link rel="preload" href="fonts/gobCL_Bold.otf" as="font" type="font/otf" crossorigin />
+  <link rel="preload" href="fonts/gobCL_Heavy.otf" as="font" type="font/otf" crossorigin />
+
   <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -16,21 +18,29 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <style>
-    /* TEMA CLARO */
+    /* TIPOGRAFÍA OFICIAL (Kit Digital SLEP Del Pino): gobCL */
+    @font-face { font-family: 'gobCL'; src: url('fonts/gobCL_Light.otf') format('opentype');   font-weight: 300; font-display: swap; }
+    @font-face { font-family: 'gobCL'; src: url('fonts/gobCL_Regular.otf') format('opentype'); font-weight: 400; font-display: swap; }
+    @font-face { font-family: 'gobCL'; src: url('fonts/gobCL_Bold.otf') format('opentype');    font-weight: 700; font-display: swap; }
+    @font-face { font-family: 'gobCL'; src: url('fonts/gobCL_Heavy.otf') format('opentype');   font-weight: 800; font-display: swap; }
+
+    /* TEMA CLARO — azul marino institucional (#25306B) como acento */
     :root {
-      --bg:         #f6f8fa; --surface:    #ffffff; --surface-2:  #f3f4f6;
-      --border:     #d0d7de; --border-2:   #afb8c1; --text:       #24292f;
-      --text-muted: #57606a; --leng:       #0284c7; --mate:       #ea580c;
-      --total:      #1a7f37; --purple:     #8250df; --red:        #cf222e; --r: 12px;
-      --font:       'Archivo', sans-serif; --mono:       'JetBrains Mono', monospace;
+      --bg:         #f5f6fa; --surface:    #ffffff; --surface-2:  #f0f1f6;
+      --border:     #e1e4ee; --border-2:   #c9cddb; --text:       #1b1f33;
+      --text-muted: #5a6078; --leng:       #0284c7; --mate:       #ea580c;
+      --total:      #1a7f37; --purple:     #25306b; --red:        #cf222e; --r: 12px;
+      --brand:      #25306b; --brand-soft: #e9ecf8; --on-brand:   #ffffff;
+      --font:       'gobCL', 'Segoe UI', Arial, sans-serif; --mono: 'gobCL', 'Segoe UI', Arial, sans-serif;
     }
 
     /* TEMA OSCURO */
     body.dark-theme {
-      --bg:         #0d1117; --surface:    #161b22; --surface-2:  #21262d;
-      --border:     #30363d; --border-2:   #3d444d; --text:       #e6edf3;
-      --text-muted: #7d8590; --leng:       #38bdf8; --mate:       #fb923c;
-      --total:      #34d399; --purple:     #a78bfa; --red:        #f87171;
+      --bg:         #0f1221; --surface:    #171b30; --surface-2:  #20253f;
+      --border:     #2b3152; --border-2:   #3b4269; --text:       #e8eaf6;
+      --text-muted: #9aa1bf; --leng:       #38bdf8; --mate:       #fb923c;
+      --total:      #34d399; --purple:     #a9b4f5; --red:        #f87171;
+      --brand:      #a9b4f5; --brand-soft: #252b4d; --on-brand:   #0f1221;
     }
 
     html { font-size: 16px; }
@@ -41,44 +51,51 @@
     #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 2rem; }
     .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 2.5rem; width: 100%; max-width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); text-align: center; }
     body.dark-theme .login-card { box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-    .login-card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text); }
+    .login-card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--brand); }
     .login-card p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem; }
     .input-group { text-align: left; margin-bottom: 1.2rem; }
     .input-group label { display: block; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; }
     .input-group input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; color: var(--text); font-family: var(--font); outline: none; transition: 0.2s; }
-    .input-group input:focus { border-color: var(--leng); box-shadow: 0 0 0 2px rgba(56,189,248,0.1); }
-    .btn-login { width: 100%; background: var(--leng); color: #ffffff; border: none; border-radius: 8px; padding: 0.9rem; font-weight: 800; cursor: pointer; transition: 0.2s; margin-top: 1rem; }
-    body.dark-theme .btn-login { color: var(--bg); }
-    .btn-login:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .input-group input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+    .btn-login { width: 100%; background: var(--brand); color: var(--on-brand); border: none; border-radius: 8px; padding: 0.9rem; font-family: var(--font); font-weight: 800; cursor: pointer; transition: 0.2s; margin-top: 1rem; }
+    .btn-login:hover { filter: brightness(1.15); transform: translateY(-1px); }
     #login-error { color: var(--red); font-size: 0.8rem; margin-top: 1rem; display: none; font-weight: 600; }
-    .loader { border: 4px solid var(--surface-2); border-top: 4px solid var(--leng); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 1rem auto; display: none; }
+    .loader { border: 4px solid var(--surface-2); border-top: 4px solid var(--brand); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 1rem auto; display: none; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* NAVBAR & FILTROS */
-    .sticky-top-section { position: sticky; top: 0; z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-    body.dark-theme .sticky-top-section { box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-    .header { padding: 1rem 2rem 0.5rem 2rem; display: block; }
+    .sticky-top-section { position: sticky; top: 0; z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--border); transition: background 0.3s, border-color 0.3s; }
+    /* Línea fina con los 6 colores del logo (detalle de marca, Kit Digital) */
+    .sticky-top-section::before { content: ''; display: block; height: 3px; background: linear-gradient(90deg, #92c140 0 16.66%, #e94252 16.66% 33.33%, #3cbff0 33.33% 50%, #f7d73e 50% 66.66%, #397bbe 66.66% 83.33%, #ee798b 83.33% 100%); }
+    .header { padding: 0.7rem 2rem 0.2rem 2rem; display: block; }
     .header::after { content: ""; display: table; clear: both; }
     .header-info { float: left; display: flex; align-items: center; gap: 1rem; }
+    .header-logo { height: 46px; width: auto; object-fit: contain; }
+    .logo-dark { display: none; }
+    body.dark-theme .logo-dark { display: block; }
+    body.dark-theme .logo-light { display: none; }
+    .header-title { font-size: 1.05rem; font-weight: 800; color: var(--brand); line-height: 1.25; }
+    .header-sub { font-size: 0.78rem; color: var(--text-muted); }
     .filter-bar { padding: 0.5rem 2rem 0.8rem 2rem; display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; }
     .filter-bar .filter-group { position: relative; transition: opacity 0.3s; }
     .filter-group::before { content: attr(data-label); position: absolute; left: 0; top: 8px; font-size: 0.85rem; font-weight: 800; color: var(--text-muted); pointer-events: none; transition: opacity 0.2s, color 0.2s; z-index: 10; letter-spacing: 0.05em; }
     .filter-group:hover::before { color: var(--text); }
     .filter-group:focus-within::before { opacity: 0; }
-    .btn-clear-text { background: transparent; border: none; color: var(--text-muted); font-size: 0.8rem; font-weight: 800; cursor: pointer; margin-left: auto; text-transform: uppercase; }
+    .filter-group:has(.ts-wrapper.has-items)::before { color: var(--brand); }
+    .btn-clear-text { background: transparent; border: none; color: var(--brand); font-family: var(--font); font-size: 0.8rem; font-weight: 800; cursor: pointer; margin-left: auto; text-transform: uppercase; }
 
     .active-filters-tray { display: block; padding-top: 0.4rem; float: right; }
-    .filter-group-tag { display: inline-flex; align-items: center; margin: 0 0.5rem 0.5rem 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-    .filter-group-label { padding: 4px 8px; font-size: 0.65rem; font-weight: 800; color: var(--leng); background: rgba(56,189,248,0.05); border-right: 1px solid var(--border); cursor: pointer; }
+    .filter-group-tag { display: inline-flex; align-items: center; margin: 0 0.5rem 0.5rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+    .filter-group-label { padding: 4px 10px; font-size: 0.65rem; font-weight: 800; color: var(--brand); background: var(--brand-soft); border-right: 1px solid var(--border); cursor: pointer; }
     .filter-value-tag { padding: 4px 10px; font-size: 0.75rem; color: var(--text); cursor: pointer; display: flex; align-items: center; border-right: 1px solid var(--border); }
     .filter-value-tag:hover { text-decoration: line-through; color: var(--red); }
     .filter-value-tag:last-child, .filter-group-tag .filter-value-tag:last-of-type { border-right: none; }
 
     /* TABS */
-    .tabs-nav { position: relative; background: var(--bg); padding: 0 2rem; display: flex; justify-content: center; gap: 3rem; border-bottom: 1px solid var(--border); }
+    .tabs-nav { position: relative; background: var(--surface); padding: 0 2rem; display: flex; justify-content: center; gap: 3rem; border-top: 1px solid var(--border); border-bottom: none; }
     .tab-btn { background: transparent; border: none; color: var(--text-muted); font-family: var(--font); font-size: 0.85rem; font-weight: 700; padding: 1rem 0; cursor: pointer; position: relative; text-transform: uppercase; letter-spacing: 0.05em; transition: 0.2s; }
-    .tab-btn.active { color: var(--leng); }
-    .tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--leng); }
+    .tab-btn.active { color: var(--brand); }
+    .tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--brand); }
     .theme-toggle-wrapper { position: absolute; left: 2rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.8rem; }
     .slep-toggle-wrapper { position: absolute; right: 2rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.8rem; }
     .theme-toggle-label, .slep-toggle-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -88,16 +105,19 @@
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--surface-2); border: 1px solid var(--border); transition: .4s; border-radius: 34px; }
     .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-muted); transition: .4s; border-radius: 50%; }
-    input:checked + .slider { background-color: rgba(56, 189, 248, 0.15); border-color: var(--leng); }
-    input:checked + .slider:before { transform: translateX(20px); background-color: var(--leng); }
+    input:checked + .slider { background-color: var(--brand-soft); border-color: var(--brand); }
+    input:checked + .slider:before { transform: translateX(20px); background-color: var(--brand); }
 
-    /* SELECTORES */
-    .ts-wrapper.multi .ts-control { background: transparent !important; border: none !important; border-bottom: 1px solid transparent !important; padding: 6px 0 !important; height: 34px !important; box-shadow: none !important; cursor: pointer !important; overflow: hidden; }
-    .ts-wrapper.multi.focus .ts-control { border-bottom: 1px solid var(--leng) !important; }
+    /* SELECTORES (tom-select): campo enmarcado; la etiqueta (data-label) queda dentro y se oculta al enfocar */
+    .ts-wrapper.multi .ts-control { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; padding: 0 12px !important; height: 38px !important; box-shadow: none !important; cursor: pointer !important; overflow: hidden; align-items: center; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
+    .ts-wrapper.multi:hover .ts-control { border-color: var(--border-2) !important; }
+    .ts-wrapper.multi.focus .ts-control { border-color: var(--brand) !important; box-shadow: 0 0 0 3px var(--brand-soft) !important; }
+    .ts-wrapper.multi.has-items .ts-control { border-color: var(--brand) !important; background: var(--brand-soft) !important; }
     .ts-wrapper.multi .ts-control > div.item { display: none !important; }
     .ts-control input { color: var(--text) !important; font-size: 0.85rem; }
     .ts-wrapper.multi:not(.focus) .ts-control input::placeholder { color: transparent !important; }
-    .ts-dropdown { background: var(--surface-2) !important; border: 1px solid var(--border) !important; color: var(--text) !important; z-index: 2000; }
+    .ts-dropdown { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; box-shadow: 0 10px 30px rgba(20,25,60,0.12); color: var(--text) !important; z-index: 2000; }
+    .ts-dropdown .active { background: var(--brand-soft) !important; color: var(--text) !important; }
 
     /* CONTENIDO PRINCIPAL */
     .main { max-width: 1560px; margin: 0 auto; padding: 1.5rem 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
@@ -110,12 +130,12 @@
     .selector-colegios { display: flex; gap: 0.75rem; align-items: flex-start; }
     .buscador-colegios-wrap { position: relative; flex: 1; }
     .input-buscador { width: 100%; box-sizing: border-box; padding: 0.55rem 0.75rem; font-family: var(--font); font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
-    .input-buscador:focus { outline: none; border-color: var(--leng); }
-    .sugerencias-colegios { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; max-height: 240px; overflow-y: auto; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .input-buscador:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+    .sugerencias-colegios { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; max-height: 240px; overflow-y: auto; z-index: 20; box-shadow: 0 10px 30px rgba(20,25,60,0.12); }
     .sugerencia-item { padding: 0.5rem 0.75rem; font-size: 0.82rem; cursor: pointer; color: var(--text); }
-    .sugerencia-item:hover { background: var(--surface-2); }
+    .sugerencia-item:hover { background: var(--brand-soft); }
     .sugerencia-vacia { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text-muted); }
-    .btn-limpiar-colegios { flex-shrink: 0; padding: 0.55rem 0.9rem; font-family: var(--font); font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+    .btn-limpiar-colegios { flex-shrink: 0; padding: 0.55rem 0.9rem; font-family: var(--font); font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
     .btn-limpiar-colegios:hover { background: var(--surface-2); color: var(--text); }
     .chips-colegios { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; min-height: 2rem; max-height: 320px; overflow-y: auto; padding-right: 0.25rem; align-content: flex-start; }
     .chips-vacio { font-size: 0.8rem; color: var(--text-muted); }
@@ -124,16 +144,17 @@
     .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .chip-x { color: var(--text-muted); font-size: 1rem; line-height: 1; }
     .chip-colegio:hover .chip-x { color: var(--text); }
-    .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.25rem; position: relative; }
-    .kpi::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--kpi-c); opacity: 0.5; }
-    .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
-    .kpi-val { font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--kpi-c); }
+    /* Tarjetas KPI: barra lateral de color + radio del Kit Digital (mismo patrón que dashboard-dia/SLEP) */
+    .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.1rem 1.25rem 1.1rem 1.5rem; position: relative; overflow: hidden; }
+    .kpi::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: var(--kpi-c); }
+    .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .kpi-val { font-family: var(--mono); font-size: 2rem; font-weight: 800; color: var(--kpi-c); }
     .kpi-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; }
 
     .tabla-cob { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .tabla-cob th { text-align: left; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted); padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
     .tabla-cob th.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
-    .tabla-cob th.th-sort:hover { color: var(--text); }
+    .tabla-cob th.th-sort:hover { color: var(--brand); }
     .tabla-cob td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
     .tabla-cob tr.fila-est { cursor: pointer; }
     .tabla-cob tr.fila-est:hover { background: var(--surface-2); }
@@ -152,16 +173,16 @@
     .chart-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem 1.4rem; min-height: 400px; display: flex; flex-direction: column; }
     .chart-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.1rem; }
     .chart-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
-    .chart-title span { color: var(--text); font-size: 0.85rem; display: block; margin-top: 0.15rem; text-transform: none; }
+    .chart-title span { color: var(--brand); font-size: 0.85rem; font-weight: 700; display: block; margin-top: 0.15rem; text-transform: none; }
     .chart-wrap { position: relative; flex: 1; min-height: 0; }
     .full-width { grid-column: 1 / -1; }
 
     .btn-download { position: absolute; top: 1.25rem; right: 1.4rem; background: transparent; border: none; color: var(--text-muted); width: 20px; height: 20px; cursor: pointer; opacity: 0; transition: 0.3s; z-index: 50; padding: 0; }
-    .btn-download:hover { color: var(--leng); transform: scale(1.1); }
+    .btn-download:hover { color: var(--brand); transform: scale(1.1); }
     .chart-card:hover .btn-download { opacity: 1; }
 
     .btn-mostrar-todo { position: absolute; top: 1.3rem; right: 3.4rem; background: transparent; border: none; color: var(--text-muted); font-family: var(--font); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer; opacity: 0; transition: 0.3s; z-index: 50; padding: 0; }
-    .btn-mostrar-todo:hover { color: var(--leng); }
+    .btn-mostrar-todo:hover { color: var(--brand); }
     .chart-card:hover .btn-mostrar-todo { opacity: 1; }
   </style>
 </head>
@@ -188,9 +209,10 @@
 <div class="sticky-top-section" id="navbar" style="display:none;">
   <header class="header">
     <div class="header-info">
+      <img class="header-logo logo-light" src="logo3.png" alt="Logo SLEP Del Pino"><img class="header-logo logo-dark" src="logo-blanco.png" alt="Logo SLEP Del Pino">
       <div>
-        <div style="font-size: 1.1rem; font-weight: 800;">Panel de Asistencia y Matrícula</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">Servicio de Educación Pública Del Pino</div>
+        <div class="header-title">Panel de Asistencia y Matrícula</div>
+        <div class="header-sub">SLEP Del Pino</div>
       </div>
     </div>
     <div id="active-filters-tray" class="active-filters-tray" style="display: none;"></div>
@@ -715,11 +737,17 @@ function colorCobertura(pct) {
 }
 
 function toggleFilaCobertura(idx) {
+  const est = ACC_COBERTURA.establecimientos[idx];
+  if (coberturaAbiertos.has(est)) coberturaAbiertos.delete(est); else coberturaAbiertos.add(est);
   document.querySelectorAll('.fila-curso-' + idx).forEach(tr => tr.classList.toggle('oculto'));
   document.getElementById('fila-est-' + idx).classList.toggle('abierta');
 }
 
 function toggleDetalleCurso(idx, j) {
+  const est = ACC_COBERTURA.establecimientos[idx];
+  const cKey = ACC_COBERTURA.cursosPorIdx[idx][j];
+  const key = est + '||' + cKey;
+  if (coberturaCursoAbiertos.has(key)) coberturaCursoAbiertos.delete(key); else coberturaCursoAbiertos.add(key);
   document.querySelectorAll('.fila-detalle-' + idx + '-' + j).forEach(tr => tr.classList.toggle('oculto2'));
   document.getElementById('fila-curso-header-' + idx + '-' + j).classList.toggle('abierta');
 }
@@ -729,6 +757,12 @@ function toggleDetalleCurso(idx, j) {
 // filtrados (ACC_COBERTURA) para que un clic en un encabezado solo reordene, sin refiltrar.
 let sortCobertura = { key: 'pct', dir: -1 };
 let ACC_COBERTURA = { datosFiltrados: [] };
+// Qué establecimientos (y qué curso-header ambiguo dentro de cada uno) están desplegados.
+// Se guarda por nombre, no por idx, porque el idx de un establecimiento cambia al reordenar
+// la tabla (sortCoberturaPor) — sin esto, cada clic en un encabezado de columna colapsaba
+// el desglose que el usuario tenía abierto porque la tabla se reconstruye desde cero.
+let coberturaAbiertos = new Set();
+let coberturaCursoAbiertos = new Set();
 
 function sortCoberturaPor(key) {
   if (sortCobertura.key === key) {
@@ -811,6 +845,8 @@ function renderTablaCobertura(datosFiltrados) {
     if (vb === null) return -1;
     return sortCobertura.dir * (va - vb);
   });
+  ACC_COBERTURA.establecimientos = establecimientos;
+  ACC_COBERTURA.cursosPorIdx = [];
 
   const flechaCobertura = key => sortCobertura.key === key ? (sortCobertura.dir === 1 ? ' ▲' : ' ▼') : '';
   let html = '<table class="tabla-cob"><thead><tr>'
@@ -826,7 +862,8 @@ function renderTablaCobertura(datosFiltrados) {
     const pct = e.cupos > 0 ? (e.matricula / e.cupos * 100) : null;
     const cob = e.cupos - e.matricula;
     const color = colorCobertura(pct);
-    html += `<tr class="fila-est" id="fila-est-${idx}" onclick="toggleFilaCobertura(${idx})">
+    const abierta = coberturaAbiertos.has(est);
+    html += `<tr class="fila-est${abierta ? ' abierta' : ''}" id="fila-est-${idx}" onclick="toggleFilaCobertura(${idx})">
       <td><span class="chevron">▶</span>${est}</td>
       <td>${e.matricula.toLocaleString('es-CL')}</td>
       <td>${e.cupos.toLocaleString('es-CL')}</td>
@@ -839,6 +876,8 @@ function renderTablaCobertura(datosFiltrados) {
       const ib = ORDEN_NIVEL.findIndex(n => b.startsWith(n));
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
+    ACC_COBERTURA.cursosPorIdx[idx] = cursos;
+    const claseOculto = abierta ? '' : ' oculto';
 
     cursos.forEach((cKey, j) => {
       const c = e.cursos[cKey];
@@ -849,7 +888,7 @@ function renderTablaCobertura(datosFiltrados) {
 
       // Caso normal: Nivel+Letra corresponde a un solo curso real, se muestra igual que siempre.
       if (detalles.length <= 1) {
-        html += `<tr class="fila-curso oculto fila-curso-${idx}">
+        html += `<tr class="fila-curso${claseOculto} fila-curso-${idx}">
           <td style="padding-left:2rem;">${cKey}</td>
           <td>${c.matricula.toLocaleString('es-CL')}</td>
           <td>${c.cupos.toLocaleString('es-CL')}</td>
@@ -861,7 +900,8 @@ function renderTablaCobertura(datosFiltrados) {
 
       // Caso ambiguo: más de un curso real comparte Nivel+Letra. La fila queda
       // desplegable y muestra el desglose por código de Enseñanza al hacer clic.
-      html += `<tr class="fila-curso fila-curso-header oculto fila-curso-${idx}" id="fila-curso-header-${idx}-${j}" onclick="toggleDetalleCurso(${idx}, ${j})">
+      const cursoAbierta = coberturaCursoAbiertos.has(est + '||' + cKey);
+      html += `<tr class="fila-curso fila-curso-header${claseOculto}${cursoAbierta ? ' abierta' : ''} fila-curso-${idx}" id="fila-curso-header-${idx}-${j}" onclick="toggleDetalleCurso(${idx}, ${j})">
         <td style="padding-left:2rem;"><span class="chevron">▶</span>${cKey}</td>
         <td>${c.matricula.toLocaleString('es-CL')}</td>
         <td>${c.cupos.toLocaleString('es-CL')}</td>
@@ -869,12 +909,13 @@ function renderTablaCobertura(datosFiltrados) {
         <td><span class="badge-cob" style="color:${cColor}">${cPct !== null ? cPct.toFixed(1) + '%' : '—'}</span></td>
       </tr>`;
 
+      const claseOculto2 = cursoAbierta ? '' : ' oculto2';
       detalles.forEach(detKey => {
         const d = c.detalles[detKey];
         const dPct = d.cupos > 0 ? (d.matricula / d.cupos * 100) : null;
         const dCob = d.cupos - d.matricula;
         const dColor = colorCobertura(dPct);
-        html += `<tr class="fila-curso fila-detalle oculto oculto2 fila-curso-${idx} fila-detalle-${idx}-${j}">
+        html += `<tr class="fila-curso fila-detalle${claseOculto}${claseOculto2} fila-curso-${idx} fila-detalle-${idx}-${j}">
           <td style="padding-left:3.5rem;">${cKey} (${detKey})</td>
           <td>${d.matricula.toLocaleString('es-CL')}</td>
           <td>${d.cupos.toLocaleString('es-CL')}</td>
@@ -1011,7 +1052,7 @@ function actualizarDashboard() {
 
       let evoAsisData = { labels: mesesUnicosArr, datasets: [] };
       let evoMatData = { labels: mesesUnicosArr, datasets: [] };
-      let colors = ['#0284c7', '#ea580c', '#1a7f37', '#8250df'];
+      let colors = ['#0284c7', '#ea580c', '#1a7f37', '#25306b'];
 
       let asisPorAgno = {};
 
@@ -1094,7 +1135,7 @@ function actualizarDashboard() {
       }
       
       let ensData = agruparPorCategoria(datosCorte, 'ensenanza', ORDEN_ENSENANZA);
-      actualizarGraficoHBar(charts['asis-ensenanza'], ensData.labels, ensData.asistencias, '#8250df');
+      actualizarGraficoHBar(charts['asis-ensenanza'], ensData.labels, ensData.asistencias, '#25306b');
       
       let nivData = agruparPorCategoria(datosCorte, 'nivel', ORDEN_NIVEL);
       actualizarGraficoHBar(charts['asis-nivel'], nivData.labels, nivData.asistencias, '#ea580c');
@@ -1522,8 +1563,8 @@ function toggleTheme() {
   document.getElementById('theme-label-text').innerText = isDark ? 'Tema Oscuro' : 'Tema Claro';
   document.getElementById('theme-label-text').style.color = isDark ? 'var(--text)' : 'var(--text-muted)';
   
-  const gridColor = isDark ? '#21262d' : '#e5e7eb';
-  const textColor = isDark ? '#7d8590' : '#57606a';
+  const gridColor = isDark ? '#20253f' : '#e5e7eb';
+  const textColor = isDark ? '#9aa1bf' : '#5a6078';
   Object.values(charts).forEach(chart => {
       if(chart.options.scales.x) { chart.options.scales.x.grid.color = gridColor; chart.options.scales.x.ticks.color = textColor; }
       if(chart.options.scales.y) { 
@@ -1594,8 +1635,8 @@ function initCharts() {
   // Opciones para el gráfico de variación con resaltado en la línea base del 0%
   const getOptVar = () => {
     const isDark = document.body.classList.contains('dark-theme');
-    const gridColor = isDark ? '#21262d' : '#e5e7eb';
-    const textColor = isDark ? '#7d8590' : '#57606a';
+    const gridColor = isDark ? '#20253f' : '#e5e7eb';
+    const textColor = isDark ? '#9aa1bf' : '#5a6078';
     return {
       responsive: true, maintainAspectRatio: false,
       scales: {
@@ -1605,7 +1646,7 @@ function initCharts() {
             color: function(context) {
               const innerDark = document.body.classList.contains('dark-theme');
               if (context.tick && context.tick.value === 0) return innerDark ? '#f87171' : '#cf222e'; // Línea del 0% en rojo
-              return innerDark ? '#21262d' : '#e5e7eb';
+              return innerDark ? '#20253f' : '#e5e7eb';
             },
             lineWidth: (context) => context.tick && context.tick.value === 0 ? 2 : 1
           },
@@ -1656,7 +1697,7 @@ function descargarGrafico(btn) {
     const seleccion = [...colegiosSeleccionados].sort((a, b) => a.localeCompare(b, 'es'));
     const visibles = seleccion.slice(0, MAX_LEYENDA_DESCARGA);
     const restantes = seleccion.length - visibles.length;
-    const textColor = isDark ? '#e6edf3' : '#24292f';
+    const textColor = isDark ? '#e8eaf6' : '#1b1f33';
 
     legendTemp = document.createElement('div');
     legendTemp.style.cssText = 'display:flex; flex-wrap:wrap; gap:0.35rem 1rem; padding-top:0.9rem; margin-top:0.75rem; border-top:1px solid var(--border);';
@@ -1668,7 +1709,7 @@ function descargarGrafico(btn) {
     card.appendChild(legendTemp);
   }
 
-  html2canvas(card, { backgroundColor: isDark ? '#161b22' : '#ffffff', scale: 2 }).then(canvas => {
+  html2canvas(card, { backgroundColor: isDark ? '#171b30' : '#ffffff', scale: 2 }).then(canvas => {
     const link = document.createElement('a'); link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
     btn.style.opacity = '';
     if (legendTemp) legendTemp.remove();
