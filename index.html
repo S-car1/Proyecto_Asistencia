@@ -14,6 +14,7 @@
   <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
@@ -481,6 +482,8 @@ function debounce(fn, wait) {
 // seleccionar varias opciones rápido recalcularía todo el dashboard una vez por clic).
 // actualizarDashboard es una function declaration (hoisted), así que puede referenciarse aquí.
 const actualizarDashboardDebounced = debounce(() => actualizarDashboard(), 150);
+
+Chart.register(ChartDataLabels);
 
 let DB_RAW = [];
 let ts = {};
@@ -1616,9 +1619,37 @@ function resetChartSeries(chartKey) {
 
 function initCharts() {
   // Requerimiento 1: Zoom de Asistencia fijado entre 60% (0.6) y 100% (1.0)
-  const getOptLine = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0.6, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.raw * 100).toFixed(1) + '%' } } } });
-  const getOptBar = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
-  const getOptLineMat = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw !== null ? c.raw.toLocaleString('es-CL') : '—'}` } } } });
+  // Etiquetas numéricas visibles sobre el propio gráfico (no solo al pasar el mouse) --
+  // regla general para todos los dashboards SLEP, ver dashboard-dia/SLEP para el mismo patrón.
+  const getOptLine = () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    const textColor = isDark ? '#9aa1bf' : '#5a6078';
+    return { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0.6, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: {
+      tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.raw * 100).toFixed(1) + '%' } },
+      datalabels: {
+        display: (context) => { const v = context.dataset.data[context.dataIndex]; return v !== null && v !== undefined; },
+        align: 'top', offset: 4, color: textColor,
+        font: { weight: 'bold', size: 9, family: "'gobCL', sans-serif" },
+        formatter: (value) => (value * 100).toFixed(1) + '%'
+      }
+    } };
+  };
+  const getOptLineMat = () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    const textColor = isDark ? '#9aa1bf' : '#5a6078';
+    return { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: {
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw !== null ? c.raw.toLocaleString('es-CL') : '—'}` } },
+      datalabels: {
+        display: (context) => { const v = context.dataset.data[context.dataIndex]; return v !== null && v !== undefined; },
+        align: 'top', offset: 4, color: textColor,
+        font: { weight: 'bold', size: 9, family: "'gobCL', sans-serif" },
+        formatter: (value) => value.toLocaleString('es-CL')
+      }
+    } };
+  };
+  // Sin etiquetas fijas: el número de colegios seleccionables es variable (mínimo 2,
+  // sin tope), así que con varias series a la vez se saturaría de texto. Se deja solo
+  // el tooltip al pasar el mouse para estos dos gráficos de comparación.
   const getOptLineColegios = (esPorcentaje) => ({
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
@@ -1629,10 +1660,24 @@ function initCharts() {
     },
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${esPorcentaje ? (c.raw * 100).toFixed(1) + '%' : c.raw.toLocaleString('es-CL')}` } }
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${esPorcentaje ? (c.raw * 100).toFixed(1) + '%' : c.raw.toLocaleString('es-CL')}` } },
+      datalabels: { display: false }
     }
   });
-  const getOptHBar = () => ({ responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0.5, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { legend:{display:false}, tooltip: { callbacks: { label: c => (c.raw * 100).toFixed(1) + '%' } } } });
+  const getOptHBar = () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    const textColor = isDark ? '#9aa1bf' : '#5a6078';
+    return { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0.5, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: {
+      legend:{display:false},
+      tooltip: { callbacks: { label: c => (c.raw * 100).toFixed(1) + '%' } },
+      datalabels: {
+        display: (context) => { const v = context.dataset.data[context.dataIndex]; return v !== null && v !== undefined; },
+        anchor: 'end', align: 'end', offset: 4, color: textColor,
+        font: { weight: 'bold', size: 10, family: "'gobCL', sans-serif" },
+        formatter: (value) => (value * 100).toFixed(0) + '%'
+      }
+    } };
+  };
 
   // Opciones para el gráfico de variación con resaltado en la línea base del 0%
   const getOptVar = () => {
@@ -1663,6 +1708,12 @@ function initCharts() {
           callbacks: {
               label: c => `${c.dataset.label}: ${c.raw >= 0 ? '+' : ''}${(c.raw * 100).toFixed(1)}%`
           }
+        },
+        datalabels: {
+          display: (context) => { const v = context.dataset.data[context.dataIndex]; return v !== null && v !== undefined; },
+          align: 'top', offset: 4, color: textColor,
+          font: { weight: 'bold', size: 9, family: "'gobCL', sans-serif" },
+          formatter: (value) => (value >= 0 ? '+' : '') + (value * 100).toFixed(1) + '%'
         }
       }
     };
