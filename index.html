@@ -1082,8 +1082,11 @@ function actualizarDashboard() {
 
         asisPorAgno[agno] = dataAsis;
 
+        // Año más reciente = línea sólida (dato vigente), años anteriores = línea punteada
+        // (histórico) — mismo criterio que el resto de los dashboards SLEP.
+        const esUltimoAgno = agno === agnosUnicosArr[agnosUnicosArr.length - 1];
         evoAsisData.datasets.push(crearDatasetLineal(`Asistencia ${agno}`, dataAsis, colors[idx % colors.length], false));
-        evoMatData.datasets.push(crearDatasetBarras(`Matrícula ${agno}`, dataMat, colors[idx % colors.length]));
+        evoMatData.datasets.push(crearDatasetLineal(`Matrícula ${agno}`, dataMat, colors[idx % colors.length], false, !esUltimoAgno));
         
         if (SHOW_SLEP && (!IS_ADMIN || f.rbd_est.length > 0)) {
             evoAsisData.datasets.push(crearDatasetLineal(`SLEP ${agno}`, dataAsisSlep, colors[idx % colors.length], true));
@@ -1166,10 +1169,9 @@ function agruparPorCategoria(data, variable, arrayOrdenamiento) {
     return { labels, asistencias };
 }
 
-function crearDatasetLineal(label, data, color, isSlep) {
-    return { label: label, data: data, borderColor: isSlep ? color + '88' : color, backgroundColor: isSlep ? 'transparent' : color + '11', borderWidth: isSlep ? 2 : 3, borderDash: isSlep ? [5, 5] : [], fill: !isSlep, pointStyle: isSlep ? 'triangle' : 'circle', pointRadius: 4, tension: 0.2 };
+function crearDatasetLineal(label, data, color, isSlep, isDashed) {
+    return { label: label, data: data, borderColor: isSlep ? color + '88' : color, backgroundColor: isSlep ? 'transparent' : color + '11', borderWidth: isSlep ? 2 : 3, borderDash: (isSlep || isDashed) ? [5, 5] : [], fill: !isSlep, pointStyle: isSlep ? 'triangle' : 'circle', pointRadius: 4, tension: 0.2 };
 }
-function crearDatasetBarras(label, data, color) { return { label: label, data: data, backgroundColor: color + 'DD', borderRadius: 4 }; }
 function actualizarGrafico(chart, dataObj) { chart.data = dataObj; chart.update(); }
 
 // Exporta cualquier tabla HTML (dentro del contenedor indicado) a un archivo CSV descargable.
@@ -1616,7 +1618,7 @@ function initCharts() {
   // Requerimiento 1: Zoom de Asistencia fijado entre 60% (0.6) y 100% (1.0)
   const getOptLine = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0.6, max: 1.0, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } }, plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.raw * 100).toFixed(1) + '%' } } } });
   const getOptBar = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
-  const getOptBarMat = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw !== null ? c.raw.toLocaleString('es-CL') : '—'}` } } } });
+  const getOptLineMat = () => ({ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw !== null ? c.raw.toLocaleString('es-CL') : '—'}` } } } });
   const getOptLineColegios = (esPorcentaje) => ({
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
@@ -1671,7 +1673,7 @@ function initCharts() {
 
   charts['asis-ensenanza'] = new Chart(document.getElementById('chart-asis-ensenanza'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
   charts['asis-nivel'] = new Chart(document.getElementById('chart-asis-nivel'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptHBar() });
-  charts['mat-evo'] = new Chart(document.getElementById('chart-mat-evo'), { type: 'bar', data: {labels:[],datasets:[]}, options: getOptBarMat() });
+  charts['mat-evo'] = new Chart(document.getElementById('chart-mat-evo'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLineMat() });
   charts['colegios-asis'] = new Chart(document.getElementById('chart-colegios-asis'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLineColegios(true) });
   charts['colegios-mat'] = new Chart(document.getElementById('chart-colegios-mat'), { type: 'line', data: {labels:[],datasets:[]}, options: getOptLineColegios(false) });
   toggleTheme(); 
