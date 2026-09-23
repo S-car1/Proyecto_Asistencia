@@ -1637,7 +1637,11 @@ function initCharts() {
   const getOptLineMat = () => {
     const isDark = document.body.classList.contains('dark-theme');
     const textColor = isDark ? '#9aa1bf' : '#5a6078';
-    return { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: {
+    // Sin beginAtZero: la matrícula de un solo colegio se mueve en un rango angosto
+    // (ej. 270-320) -- forzar el eje a partir de 0 aplasta la línea contra el techo del
+    // gráfico. Chart.js autoescala el mínimo con margen, igual criterio que getOptLine()
+    // (asistencia) que ya usa un rango acotado (0.6-1.0) en vez de 0-1 por el mismo motivo.
+    return { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => v.toLocaleString('es-CL') } } }, plugins: {
       tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.raw !== null ? c.raw.toLocaleString('es-CL') : '—'}` } },
       datalabels: {
         display: (context) => { const v = context.dataset.data[context.dataIndex]; return v !== null && v !== undefined; },
