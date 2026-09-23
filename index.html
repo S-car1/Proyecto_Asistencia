@@ -62,6 +62,37 @@
     .btn-login:hover { filter: brightness(1.15); transform: translateY(-1px); }
     #login-error { color: var(--red); font-size: 0.8rem; margin-top: 1rem; display: none; font-weight: 600; }
     .loader { border: 4px solid var(--surface-2); border-top: 4px solid var(--brand); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 1rem auto; display: none; }
+
+    /* MODAL DE AYUDA */
+    .help-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border);
+      background: var(--surface-2); color: var(--text-muted); font-weight: 800; font-size: 0.85rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;
+      flex-shrink: 0;
+    }
+    .help-btn:hover { border-color: var(--brand); color: var(--brand); }
+    #help-overlay {
+      position: fixed; inset: 0; background: rgba(15,18,33,0.5); z-index: 6000;
+      display: none; align-items: center; justify-content: center; padding: 2rem;
+    }
+    #help-overlay.open { display: flex; }
+    .help-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+      padding: 1.8rem 2rem; width: 100%; max-width: 560px; max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 12px 40px rgba(37,48,107,0.2);
+    }
+    body.dark-theme .help-card { box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+    .help-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.1rem; }
+    .help-card-header h2 { font-size: 1.05rem; font-weight: 800; color: var(--brand); }
+    .help-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.5rem; line-height: 1; padding: 0.1rem 0.4rem; }
+    .help-close:hover { color: var(--text); }
+    .help-section { margin-bottom: 1.2rem; }
+    .help-section:last-child { margin-bottom: 0; }
+    .help-section h3 { font-size: 0.78rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.4rem; }
+    .help-section p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0 0 0.4rem; }
+    .help-section ul { padding-left: 1.1rem; margin: 0.3rem 0 0; }
+    .help-section li { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 0.3rem; }
+    .help-section li b { color: var(--text); }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* NAVBAR & FILTROS */
@@ -243,6 +274,7 @@
 
   <nav class="tabs-nav">
     <div class="theme-toggle-wrapper">
+      <button class="help-btn" onclick="abrirAyuda()" title="Ayuda">?</button>
       <span class="theme-toggle-label" id="theme-label-text">Tema Claro</span>
       <label class="switch">
         <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
@@ -320,6 +352,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
         <div class="chart-header"><div class="chart-title">Evolución de Matrícula<span>Matrícula Total (Mes a Mes)</span></div></div>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin: -0.5rem 0 0.75rem;">
+          El eje no parte en 0 — se ajusta al rango de los datos para que se vea mejor la variación
+          mes a mes. Los valores exactos están sobre cada punto.
+        </p>
         <div class="chart-wrap" style="height: 300px;"><canvas id="chart-mat-evo"></canvas></div>
       </div>
     </div>
@@ -332,7 +368,7 @@
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
-        <div class="chart-header"><div class="chart-title">Brechas por Etapa<span>Asistencia por Tipo de Enseñanza</span></div></div>
+        <div class="chart-header"><div class="chart-title">Brechas por Etapa<span>Asistencia por Tipo de Enseñanza - Escala Ajustada (50% - 100%)</span></div></div>
         <div class="chart-wrap"><canvas id="chart-asis-ensenanza"></canvas></div>
       </div>
 
@@ -341,7 +377,7 @@
         <button class="btn-download" onclick="descargarGrafico(this)" title="Descargar Gráfico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         </button>
-        <div class="chart-header"><div class="chart-title">Desglose Específico<span>Asistencia por Nivel Educativo</span></div></div>
+        <div class="chart-header"><div class="chart-title">Desglose Específico<span>Asistencia por Nivel Educativo - Escala Ajustada (50% - 100%)</span></div></div>
         <div class="chart-wrap"><canvas id="chart-asis-nivel"></canvas></div>
       </div>
     </div>
@@ -1772,6 +1808,49 @@ function descargarGrafico(btn) {
     if (legendTemp) legendTemp.remove();
   });
 }
+
+function abrirAyuda() { document.getElementById('help-overlay').classList.add('open'); }
+function cerrarAyuda() { document.getElementById('help-overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarAyuda(); });
 </script>
+
+<div id="help-overlay" onclick="if (event.target === this) cerrarAyuda()">
+  <div class="help-card">
+    <div class="help-card-header">
+      <h2>Cómo usar este panel</h2>
+      <button class="help-close" onclick="cerrarAyuda()" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="help-section">
+      <h3>Filtros</h3>
+      <p>Año, Mes, Enseñanza, Nivel, Letra, Comuna y Establecimiento se pueden combinar y seleccionar varios valores a la vez. "Limpiar Filtros" los resetea todos.</p>
+    </div>
+    <div class="help-section">
+      <h3>Pestañas</h3>
+      <ul>
+        <li><b>Panorama General:</b> asistencia y matrícula del conjunto filtrado.</li>
+        <li><b>Análisis por Niveles:</b> desglose por tipo de enseñanza y nivel.</li>
+        <li><b>Matrícula y Cobertura:</b> tabla de cupos 2026 por establecimiento — clic en un colegio despliega el detalle por curso.</li>
+        <li><b>Análisis por Colegio:</b> comparación entre varios establecimientos elegidos a mano (aparece al seleccionar 2 o más en el filtro de Establecimiento).</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>Gráficos</h3>
+      <ul>
+        <li>Pasar el mouse sobre un punto o barra muestra el valor exacto.</li>
+        <li>Al pasar el mouse sobre una tarjeta de gráfico aparece "Mostrar todo", para reactivar series que se hayan ocultado desde la leyenda.</li>
+        <li>El ícono ↓ descarga el gráfico como imagen.</li>
+        <li>"PROMEDIO SLEP" agrega una línea de comparación contra el SLEP completo al filtrar por un establecimiento.</li>
+      </ul>
+    </div>
+    <div class="help-section">
+      <h3>Tabla de Cobertura</h3>
+      <p>Clic en un encabezado de columna (Matrícula, Cupos 2026, Cobertura, % Cobertura) ordena la tabla por esa columna. El desglose de cursos que tengas abierto se mantiene abierto al reordenar.</p>
+    </div>
+    <div class="help-section">
+      <h3>Escalas de los gráficos</h3>
+      <p>Cuando un eje no parte en 0 (o dice "Escala Ajustada"), es porque se acotó al rango real de los datos para que se note mejor la variación — el valor exacto siempre está sobre el punto o la barra.</p>
+    </div>
+  </div>
+</div>
 </body>
 </html>
