@@ -151,12 +151,18 @@
     input:checked + .slider { background-color: var(--brand-soft); border-color: var(--brand); }
     input:checked + .slider:before { transform: translateX(20px); background-color: var(--brand); }
 
-    /* Tema como ícono dentro del toggle: la perilla muestra ☀ (claro) o ☾ (oscuro).
+    /* Tema: switch con ☀ y ☾ siempre visibles a los lados; la perilla marca el activo.
        Escopado a .theme-switch para no tocar el toggle "Promedio SLEP" (usa .switch igual).
        El JS sigue escribiendo "Tema Claro/Oscuro" en #theme-label-text, pero queda oculto. */
     .theme-toggle-label { display: none; }
-    .theme-switch .slider:before { content: '\2600\FE0E'; height: 18px; width: 18px; left: 2px; bottom: 2px; display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; color: var(--surface); }
-    .theme-switch input:checked + .slider:before { content: '\263E\FE0E'; }
+    .theme-switch { width: 60px; height: 26px; }
+    .theme-switch .slider:before { height: 20px; width: 20px; left: 2px; bottom: 2px; }
+    .theme-switch input:checked + .slider:before { transform: translateX(34px); }
+    .theme-switch::before, .theme-switch::after { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 1; pointer-events: none; font-size: 13px; line-height: 1; transition: color .4s; }
+    .theme-switch::before { content: '\2600\FE0E'; left: 13px; color: var(--surface); }
+    .theme-switch::after { content: '\263E\FE0E'; left: 47px; color: var(--text-muted); }
+    body.dark-theme .theme-switch::before { color: var(--text-muted); }
+    body.dark-theme .theme-switch::after { color: var(--surface); }
 
     /* SELECTORES (tom-select): campo enmarcado; la etiqueta (data-label) queda dentro y se oculta al enfocar */
     .ts-wrapper.multi .ts-control { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; padding: 0 12px !important; height: 38px !important; box-shadow: none !important; cursor: pointer !important; overflow: hidden; align-items: center; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
