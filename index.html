@@ -108,7 +108,7 @@
     body.dark-theme .logo-light { display: none; }
     .header-title { font-size: 1.05rem; font-weight: 800; color: var(--brand); line-height: 1.25; }
     .header-sub { font-size: 0.78rem; color: var(--text-muted); }
-    .filter-bar { padding: 0.5rem 2rem 0.8rem 2rem; display: flex; flex-wrap: wrap; gap: 1.2rem; align-items: center; }
+    .filter-bar { padding: 0.5rem 2rem 0.8rem 2rem; display: flex; flex-wrap: wrap; gap: 0.8rem 0.9rem; align-items: center; }
     .filter-bar .filter-group { position: relative; transition: opacity 0.3s; }
     .filter-group::before { content: attr(data-label); position: absolute; left: 0; top: 8px; font-size: 0.85rem; font-weight: 800; color: var(--text-muted); pointer-events: none; transition: opacity 0.2s, color 0.2s; z-index: 10; letter-spacing: 0.05em; }
     .filter-group:hover::before { color: var(--text); }
@@ -262,18 +262,18 @@
   </header>
 
   <div class="filter-bar">
-    <div class="filter-group" style="flex: 0.6;" data-label="AÑO ▾"><select id="f-agno" multiple placeholder="Año..."></select></div>
-    <div class="filter-group" style="flex: 0.8;" data-label="MES ▾"><select id="f-mes" multiple placeholder="Mes..."></select></div>
-    <div class="filter-group" style="flex: 1.2;" data-label="ENSEÑANZA ▾"><select id="f-ensenanza" multiple placeholder="Enseñanza..."></select></div>
-    <div class="filter-group" style="flex: 1.2;" data-label="NIVEL ▾"><select id="f-nivel" multiple placeholder="Nivel..."></select></div>
-    <div class="filter-group" style="flex: 0.8;" data-label="LETRA ▾"><select id="f-letra" multiple placeholder="Letra..."></select></div>
-    <div class="filter-group" style="flex: 1;" data-label="COMUNA ▾"><select id="f-comuna" multiple placeholder="Comuna..."></select></div>
+    <div class="filter-group" style="flex: 0.7 1 0; min-width: 88px;" data-label="AÑO ▾"><select id="f-agno" multiple placeholder="Año..."></select></div>
+    <div class="filter-group" style="flex: 0.8 1 0; min-width: 92px;" data-label="MES ▾"><select id="f-mes" multiple placeholder="Mes..."></select></div>
+    <div class="filter-group" style="flex: 1.2 1 0; min-width: 138px;" data-label="ENSEÑANZA ▾"><select id="f-ensenanza" multiple placeholder="Enseñanza..."></select></div>
+    <div class="filter-group" style="flex: 1 1 0; min-width: 100px;" data-label="NIVEL ▾"><select id="f-nivel" multiple placeholder="Nivel..."></select></div>
+    <div class="filter-group" style="flex: 0.8 1 0; min-width: 98px;" data-label="LETRA ▾"><select id="f-letra" multiple placeholder="Letra..."></select></div>
+    <div class="filter-group" style="flex: 1 1 0; min-width: 118px;" data-label="COMUNA ▾"><select id="f-comuna" multiple placeholder="Comuna..."></select></div>
 
-    <div class="filter-group" id="group-rbd" style="flex: 2.5;" data-label="ESTABLECIMIENTO ▾">
+    <div class="filter-group" id="group-rbd" style="flex: 3 1 0; min-width: 210px;" data-label="ESTABLECIMIENTO ▾">
       <select id="f-rbd" multiple placeholder="Buscar unidad educativa..."></select>
     </div>
     
-    <div id="static-rbd-container" class="filter-group" style="display:none; flex: 2.5;">
+    <div id="static-rbd-container" class="filter-group" style="display:none; flex: 3 1 0; min-width: 210px;">
       <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid var(--leng); border-radius: 8px; padding: 0 12px; height: 34px; display: flex; align-items: center; overflow: hidden;">
         <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); margin-right: 8px; letter-spacing: 0.05em;">ESTABLECIMIENTO:</span>
         <span id="static-rbd-text" style="font-size: 0.85rem; font-weight: 700; color: var(--leng); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
