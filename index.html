@@ -133,10 +133,6 @@
     .theme-toggle-wrapper { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .slep-toggle-wrapper { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
     .theme-toggle-label, .slep-toggle-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    /* Tema como ícono (☀/☾): el JS sigue escribiendo "Tema Claro/Oscuro" pero queda oculto */
-    .theme-toggle-label { font-size: 0; }
-    .theme-toggle-label::before { content: '\2600'; font-size: 1.05rem; }
-    body.dark-theme .theme-toggle-label::before { content: '\263E'; }
 
     /* TABLET / LAPTOP CHICO: el bloque de pestañas (centrado) y los toggles (posición
        absoluta a cada costado) empiezan a cruzarse -- mismo problema y mismo arreglo que
@@ -154,6 +150,13 @@
     .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-muted); transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: var(--brand-soft); border-color: var(--brand); }
     input:checked + .slider:before { transform: translateX(20px); background-color: var(--brand); }
+
+    /* Tema como ícono dentro del toggle: la perilla muestra ☀ (claro) o ☾ (oscuro).
+       Escopado a .theme-switch para no tocar el toggle "Promedio SLEP" (usa .switch igual).
+       El JS sigue escribiendo "Tema Claro/Oscuro" en #theme-label-text, pero queda oculto. */
+    .theme-toggle-label { display: none; }
+    .theme-switch .slider:before { content: '\2600\FE0E'; height: 18px; width: 18px; left: 2px; bottom: 2px; display: flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; color: var(--surface); }
+    .theme-switch input:checked + .slider:before { content: '\263E\FE0E'; }
 
     /* SELECTORES (tom-select): campo enmarcado; la etiqueta (data-label) queda dentro y se oculta al enfocar */
     .ts-wrapper.multi .ts-control { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; padding: 0 12px !important; height: 38px !important; box-shadow: none !important; cursor: pointer !important; overflow: hidden; align-items: center; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
@@ -290,7 +293,7 @@
   <nav class="tabs-nav">
     <div class="theme-toggle-wrapper">
       <span class="theme-toggle-label" id="theme-label-text" title="Cambiar tema">Tema Claro</span>
-      <label class="switch">
+      <label class="switch theme-switch" title="Cambiar tema">
         <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
         <span class="slider round"></span>
       </label>
