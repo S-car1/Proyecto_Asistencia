@@ -278,9 +278,8 @@
       <select id="f-rbd" multiple placeholder="Buscar unidad educativa..."></select>
     </div>
     
-    <div id="static-rbd-container" class="filter-group" style="display:none; flex: 3 1 0; min-width: 210px;">
+    <div id="static-rbd-container" class="filter-group" style="display:none; flex: 5 1 0; min-width: 210px;">
       <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid var(--leng); border-radius: 8px; padding: 0 12px; height: 34px; display: flex; align-items: center; overflow: hidden;">
-        <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); margin-right: 8px; letter-spacing: 0.05em;">ESTABLECIMIENTO:</span>
         <span id="static-rbd-text" style="font-size: 0.85rem; font-weight: 700; color: var(--leng); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
       </div>
     </div>
@@ -702,7 +701,9 @@ function iniciarInterfaz() {
         ts['rbd_est'].setValue([dataColegio.rbd_est]);
         document.getElementById('group-rbd').style.display = 'none';
         document.getElementById('static-rbd-container').style.display = 'block';
-        document.getElementById('static-rbd-text').innerText = dataColegio.rbd_est;
+        const staticTxt = document.getElementById('static-rbd-text');
+        staticTxt.innerText = dataColegio.rbd_est;
+        staticTxt.title = dataColegio.rbd_est; // nombre completo al pasar el mouse si se corta
     }
   }
   actualizarDashboard();
