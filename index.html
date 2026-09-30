@@ -221,7 +221,8 @@
     .tabla-cob .chevron { display: inline-block; transition: transform 0.2s; margin-right: 0.5rem; color: var(--text-muted); }
     .tabla-cob tr.abierta .chevron { transform: rotate(90deg); }
     .badge-cob { font-family: var(--mono); font-weight: 700; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
-    .variacion-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); justify-content: start; gap: 1rem; padding: 0.5rem 0 0.25rem 0; }
+    .variacion-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 0.5rem 0 0.25rem 0; }
+    @media (max-width: 900px) { .variacion-grid { grid-template-columns: repeat(2, 1fr); } }
     .variacion-item .kpi-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
     .variacion-item .kpi-val { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; }
 
