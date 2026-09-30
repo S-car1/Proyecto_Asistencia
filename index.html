@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard Asistencia y Matrícula · SLEP Del Pino</title>
+  <title>Visor de datos Asistencia y Matrícula · SLEP Del Pino</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
   
   <!-- Tipografía oficial del Kit Digital SLEP (gobCL), servida desde /fonts -->
@@ -268,7 +268,7 @@
     <div class="header-info">
       <img class="header-logo logo-light" src="logo3.png" alt="Logo SLEP Del Pino"><img class="header-logo logo-dark" src="logo-blanco.png" alt="Logo SLEP Del Pino">
       <div>
-        <div class="header-title">Panel de Asistencia y Matrícula</div>
+        <div class="header-title">Visor de datos Asistencia y Matrícula</div>
         <div class="header-sub">SLEP Del Pino</div>
       </div>
     </div>
@@ -1849,7 +1849,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarAyuda(
 <div id="help-overlay" onclick="if (event.target === this) cerrarAyuda()">
   <div class="help-card">
     <div class="help-card-header">
-      <h2>Cómo usar este panel</h2>
+      <h2>Cómo usar este visor</h2>
       <button class="help-close" onclick="cerrarAyuda()" aria-label="Cerrar">&times;</button>
     </div>
     <div class="help-section">
@@ -1862,7 +1862,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarAyuda(
         <li><b>Panorama General:</b> asistencia y matrícula del conjunto filtrado.</li>
         <li><b>Análisis por Niveles:</b> desglose por tipo de enseñanza y nivel.</li>
         <li><b>Matrícula y Cobertura:</b> tabla de cupos 2026 por establecimiento — clic en un colegio despliega el detalle por curso.</li>
-        <li><b>Análisis por Colegio:</b> comparación entre varios establecimientos elegidos a mano (aparece al seleccionar 2 o más en el filtro de Establecimiento).</li>
+        <li><b>Análisis por Colegio:</b> comparación entre varios establecimientos elegidos a mano (aparece al seleccionar 2 o más en el filtro de Establecimiento). Sus tablas de Asistencia y Matrícula se ordenan con clic en el encabezado de cualquier columna.</li>
       </ul>
     </div>
     <div class="help-section">
@@ -1873,6 +1873,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarAyuda(
         <li>El ícono ↓ descarga el gráfico como imagen.</li>
         <li>"PROMEDIO SLEP" agrega una línea de comparación contra el SLEP completo al filtrar por un establecimiento.</li>
       </ul>
+    </div>
+    <div class="help-section">
+      <h3>Variación de Matrícula del Año</h3>
+      <p>Compara la matrícula del primer y del último mes con datos del año más reciente, para ver cuánto creció o cayó durante el año.</p>
     </div>
     <div class="help-section">
       <h3>Tabla de Cobertura</h3>
